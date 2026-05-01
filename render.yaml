@@ -1,5 +1,4 @@
 # Render 部署配置文件
-# 访问 https://dashboard.render.com/ 并点击 "New +" -> "Blueprint" 导入此文件
 
 services:
   # 后端服务
@@ -21,24 +20,13 @@ services:
       sizeGB: 1
 
   # 前端静态站点
-  - type: static
+  - type: web
     name: resale-platform-frontend
+    env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
       - key: NODE_VERSION
         value: 18
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-cache
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://resale-platform-backend.onrender.com/api/$1
-      - type: rewrite
-        source: /ws/*
-        destination: wss://resale-platform-backend.onrender.com/ws/$1
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      - key: VITE_API_BASE_URL
+        value: https://resale-platform-backend.onrender.com/api
