@@ -1,0 +1,98 @@
+# Spring Boot应用配置
+spring:
+  application:
+    name: resale-platform
+
+  # 数据源配置 (H2 内存数据库)
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:resale_platform;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # H2 控制台配置（可选，用于调试）
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # 数据库初始化配置
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+  # Redis配置（默认禁用，使用内存存储替代）
+  data:
+    redis:
+      enabled: false
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: -1ms
+
+  # Jackson配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+# MyBatis Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.resale.platform.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# JWT配置
+jwt:
+  secret: ResalePlatformSecretKey2024ForJWTSigningMustBeLongEnough12345678901234567890
+  access-token-validity-in-seconds: 7200
+  refresh-token-validity-in-seconds: 604800
+
+# 登录安全配置
+security:
+  login:
+    max-fail-count: 5
+    lock-duration-minutes: 15
+    captcha-validity-minutes: 5
+    sms-validity-minutes: 5
+    sms-max-send-count: 10
+    rate-limit-per-minute: 5
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.resale.platform: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

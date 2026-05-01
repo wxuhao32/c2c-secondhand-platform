@@ -1,0 +1,147 @@
+$primary-50: #eef2ff;
+$primary-100: #dce4fd;
+$primary-200: #b9c9fb;
+$primary-300: #93a8f7;
+$primary-400: #718bf2;
+$primary-500: #5b6ee6;
+$primary-600: #4f55d4;
+$primary-700: #4344b8;
+$primary-800: #393c95;
+$primary-900: #323774;
+
+$success-50: #ecfdf5;
+$success-100: #d1fae5;
+$success-500: #10b981;
+$success-600: #059669;
+
+$warning-50: #fffbeb;
+$warning-100: #fef3c7;
+$warning-500: #f59e0b;
+$warning-600: #d97706;
+
+$danger-50: #fef2f2;
+$danger-100: #fee2e2;
+$danger-500: #ef4444;
+$danger-600: #dc2626;
+
+$info-50: #eff6ff;
+$info-100: #dbeafe;
+$info-500: #3b82f6;
+$info-600: #2563eb;
+
+$neutral-50: #fafafa;
+$neutral-100: #f4f4f5;
+$neutral-200: #e4e4e7;
+$neutral-300: #d4d4d8;
+$neutral-400: #a1a1aa;
+$neutral-500: #71717a;
+$neutral-600: #52525b;
+$neutral-700: #3f3f46;
+$neutral-800: #27272a;
+$neutral-900: #18181b;
+
+$color-primary: $primary-600;
+$color-primary-light: $primary-400;
+$color-primary-lighter: $primary-100;
+$color-primary-bg: $primary-50;
+$color-success: $success-500;
+$color-warning: $warning-500;
+$color-danger: $danger-500;
+$color-info: $info-500;
+
+$color-text-primary: $neutral-900;
+$color-text-regular: $neutral-700;
+$color-text-secondary: $neutral-500;
+$color-text-placeholder: $neutral-400;
+$color-text-disabled: $neutral-300;
+
+$color-bg-page: #f8f9fc;
+$color-bg-card: #ffffff;
+$color-bg-elevated: #ffffff;
+$color-bg-hover: $neutral-50;
+$color-bg-active: $neutral-100;
+
+$color-border: $neutral-200;
+$color-border-light: $neutral-100;
+
+$font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+$font-family-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+
+$font-size-xs: 12px;
+$font-size-sm: 13px;
+$font-size-base: 14px;
+$font-size-md: 15px;
+$font-size-lg: 16px;
+$font-size-xl: 18px;
+$font-size-2xl: 20px;
+$font-size-3xl: 24px;
+$font-size-4xl: 28px;
+$font-size-5xl: 32px;
+$font-size-6xl: 40px;
+
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+$line-height-tight: 1.25;
+$line-height-normal: 1.5;
+$line-height-relaxed: 1.75;
+$line-height-snug: 1.375;
+
+$letter-spacing-tight: -0.025em;
+$letter-spacing-normal: 0;
+$letter-spacing-wide: 0.025em;
+
+$spacing-1: 4px;
+$spacing-2: 8px;
+$spacing-3: 12px;
+$spacing-4: 16px;
+$spacing-5: 20px;
+$spacing-6: 24px;
+$spacing-8: 32px;
+$spacing-10: 40px;
+$spacing-12: 48px;
+$spacing-16: 64px;
+
+$radius-sm: 6px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-2xl: 20px;
+$radius-full: 9999px;
+
+$shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+$shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+$shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+$shadow-colored: 0 8px 24px -4px rgba(79, 85, 212, 0.2);
+
+$transition-fast: 150ms ease;
+$transition-base: 200ms ease;
+$transition-slow: 300ms ease;
+$transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+$breakpoint-2xl: 1536px;
+
+$container-sm: 640px;
+$container-md: 768px;
+$container-lg: 1024px;
+$container-xl: 1200px;
+
+$header-height: 64px;

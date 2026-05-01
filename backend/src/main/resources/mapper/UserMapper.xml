@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.resale.platform.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.resale.platform.entity.User">
+        <id column="id" property="userId"/>
+        <result column="username" property="username"/>
+        <result column="mobile" property="mobile"/>
+        <result column="email" property="email"/>
+        <result column="password" property="password"/>
+        <result column="nickname" property="nickname"/>
+        <result column="avatar" property="avatar"/>
+        <result column="status" property="status"/>
+        <result column="role" property="role"/>
+        <result column="last_login_ip" property="lastLoginIp"/>
+        <result column="last_login_time" property="lastLoginTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        SELECT * FROM users
+        WHERE username = #{username} AND is_deleted = 0
+    </select>
+
+    <select id="selectByMobile" resultMap="BaseResultMap">
+        SELECT * FROM users
+        WHERE mobile = #{mobile} AND is_deleted = 0
+    </select>
+
+    <select id="selectByEmail" resultMap="BaseResultMap">
+        SELECT * FROM users
+        WHERE email = #{email} AND is_deleted = 0
+    </select>
+
+    <select id="selectByWechatOpenid" resultMap="BaseResultMap">
+        SELECT u.* FROM users u
+        INNER JOIN user_auth ua ON u.id = ua.user_id
+        WHERE ua.auth_type = 'WECHAT' AND ua.auth_id = #{openid} AND u.is_deleted = 0
+    </select>
+
+</mapper>

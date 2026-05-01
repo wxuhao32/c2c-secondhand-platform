@@ -1,0 +1,49 @@
+# 后端 - Java/Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.logs
+*.log
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# 前端 - Node.js
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# 环境变量（包含敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 操作系统
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 数据库文件（如果本地测试产生）
+*.mv.db
+*.trace.db
+
+# 其他
+*.tmp
+*.temp
+.cache/

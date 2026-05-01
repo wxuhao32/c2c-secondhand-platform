@@ -1,0 +1,44 @@
+# Render 部署配置文件
+# 访问 https://dashboard.render.com/ 并点击 "New +" -> "Blueprint" 导入此文件
+
+services:
+  # 后端服务
+  - type: web
+    name: resale-platform-backend
+    env: java
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -jar target/platform-1.0.0.jar
+    envVars:
+      - key: JAVA_VERSION
+        value: 17
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SERVER_PORT
+        value: 10000
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+
+  # 前端静态站点
+  - type: static
+    name: resale-platform-frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://resale-platform-backend.onrender.com/api/$1
+      - type: rewrite
+        source: /ws/*
+        destination: wss://resale-platform-backend.onrender.com/ws/$1
+      - type: rewrite
+        source: /*
+        destination: /index.html
