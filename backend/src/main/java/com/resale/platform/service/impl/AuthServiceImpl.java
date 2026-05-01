@@ -95,9 +95,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ExceptionEnum.MOBILE_EXIST);
         }
 
-        existUser = userMapper.selectByEmail(request.getEmail());
-        if (existUser != null) {
-            throw new BusinessException(ExceptionEnum.EMAIL_EXIST);
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            existUser = userMapper.selectByEmail(request.getEmail());
+            if (existUser != null) {
+                throw new BusinessException(ExceptionEnum.EMAIL_EXIST);
+            }
         }
 
         User user = new User();

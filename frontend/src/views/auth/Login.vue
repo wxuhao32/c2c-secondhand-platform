@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, CircleCheck, Message, Shop } from '@element-plus/icons-vue'
@@ -198,8 +198,9 @@ const handleLogin = async () => {
 
       ElMessage.success('登录成功')
 
-      const redirect = route.query.redirect || '/'
-      router.push(redirect)
+      const redirect = route.query.redirect || '/home'
+      await nextTick()
+      window.location.href = redirect
     } catch (error) {
       ElMessage.error(error.message || '登录失败')
       refreshCaptcha()

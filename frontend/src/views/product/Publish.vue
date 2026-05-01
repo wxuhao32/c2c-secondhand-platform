@@ -99,6 +99,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { publishProduct, updateProduct, getProductDetail, uploadProductImage } from '@/api/product'
 
 const router = useRouter()
 const route = useRoute()
@@ -169,8 +170,48 @@ const handleSubmit = async () => {
     if (valid) {
       submitting.value = true
       try {
-        ElMessage.success(isEdit.value ? '商品修改成功' : '商品发布成功')
+        let imageUrls = []
+        for (const file of form.images) {
+          if (file.response && file.response.data) {
+            imageUrls.push(file.response.data)
+          } else if (file.url) {
+            imageUrls.push(file.url)
+          } else if (file.raw) {
+            try {
+              const formData = new FormData()
+              formData.append('file', file.raw)
+              const uploadRes = await uploadProductImage(formData)
+              if (uploadRes.data) {
+                imageUrls.push(uploadRes.data)
+              }
+            } catch (uploadErr) {
+              console.error('图片上传失败', uploadErr)
+            }
+          }
+        }
+
+        const submitData = {
+          title: form.title,
+          description: form.description,
+          price: form.price,
+          originalPrice: form.originalPrice || null,
+          categoryId: form.category,
+          condition: form.condition,
+          tradeMethods: form.tradeMethods.join(','),
+          shippingFee: form.shippingFee,
+          images: imageUrls.length > 0 ? JSON.stringify(imageUrls) : null
+        }
+
+        if (isEdit.value) {
+          await updateProduct(route.query.id, submitData)
+          ElMessage.success('商品修改成功')
+        } else {
+          await publishProduct(submitData)
+          ElMessage.success('商品发布成功')
+        }
         router.push('/my-products')
+      } catch (error) {
+        ElMessage.error(error.message || '操作失败，请重试')
       } finally {
         submitting.value = false
       }

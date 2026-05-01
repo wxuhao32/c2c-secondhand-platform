@@ -159,30 +159,31 @@ public class AdminController {
     }
 
     @PostMapping("/notify")
-    @PreAuthorize("hasRole('ADMIN')")
     public Result<Void> sendNotification(@RequestBody Map<String, Object> body) {
-        Long receiverId = body.get("receiverId") != null ? Long.valueOf(body.get("receiverId").toString()) : null;
-        String title = (String) body.getOrDefault("title", "系统通知");
-        String content = (String) body.get("content");
-        Integer type = body.get("type") != null ? Integer.valueOf(body.get("type").toString()) : 0;
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated() || "anonymous".equals(auth.getPrincipal())) {
+                return Result.error(401, "请先登录");
+            }
+            boolean isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+            if (!isAdmin) {
+                return Result.error(403, "无管理员权限");
+            }
 
-        if (receiverId != null) {
-            Message message = new Message();
-            message.setSenderId(null);
-            message.setReceiverId(receiverId);
-            message.setType(type);
-            message.setTitle(title);
-            message.setContent(content);
-            message.setIsRead(0);
-            message.setIsDeleted(0);
-            message.setCreatedAt(LocalDateTime.now());
-            messageMapper.insert(message);
-        } else {
-            List<User> allUsers = userMapper.selectAll();
-            for (User user : allUsers) {
+            String content = (String) body.get("content");
+            if (content == null || content.trim().isEmpty()) {
+                return Result.error(400, "消息内容不能为空");
+            }
+
+            Long receiverId = body.get("receiverId") != null ? Long.valueOf(body.get("receiverId").toString()) : null;
+            String title = (String) body.getOrDefault("title", "系统通知");
+            Integer type = body.get("type") != null ? Integer.valueOf(body.get("type").toString()) : 0;
+
+            if (receiverId != null) {
                 Message message = new Message();
                 message.setSenderId(null);
-                message.setReceiverId(user.getUserId());
+                message.setReceiverId(receiverId);
                 message.setType(type);
                 message.setTitle(title);
                 message.setContent(content);
@@ -190,8 +191,25 @@ public class AdminController {
                 message.setIsDeleted(0);
                 message.setCreatedAt(LocalDateTime.now());
                 messageMapper.insert(message);
+            } else {
+                List<User> allUsers = userMapper.selectAll();
+                for (User user : allUsers) {
+                    Message message = new Message();
+                    message.setSenderId(null);
+                    message.setReceiverId(user.getUserId());
+                    message.setType(type);
+                    message.setTitle(title);
+                    message.setContent(content);
+                    message.setIsRead(0);
+                    message.setIsDeleted(0);
+                    message.setCreatedAt(LocalDateTime.now());
+                    messageMapper.insert(message);
+                }
             }
+            return Result.success();
+        } catch (Exception e) {
+            log.error("发送通知失败", e);
+            return Result.error(500, "发送失败: " + e.getMessage());
         }
-        return Result.success();
     }
 }

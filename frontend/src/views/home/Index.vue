@@ -127,13 +127,21 @@
             <h2 class="section-title">推荐好物</h2>
             <p class="section-desc">精选优质闲置，品质有保障</p>
           </div>
-          <a class="view-more">
-            查看更多
+          <a class="view-more" @click="loadProducts">
+            刷新
             <el-icon><ArrowRight /></el-icon>
           </a>
         </div>
 
-        <div class="products-grid">
+        <div v-if="productsLoading" class="loading-state">
+          <el-icon class="loading-spin" :size="24"><Loading /></el-icon>
+          <span>正在加载商品，请稍候...</span>
+        </div>
+        <div v-else-if="productsError" class="loading-state error-state">
+          <span>加载失败，服务器可能正在启动中</span>
+          <el-button type="primary" size="small" @click="loadProducts" style="margin-top: 8px">点击重试</el-button>
+        </div>
+        <div v-else class="products-grid">
           <div v-if="productList.length === 0" style="grid-column: 1/-1; text-align: center; padding: 60px 0; color: #909399;">
             <el-empty description="暂无商品" />
           </div>
@@ -184,7 +192,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { Shop, Plus, ArrowDown, ArrowRight, User, Goods, List, SwitchButton, Search, Location, Phone, Monitor, Timer, Basketball, Document, Present, UserFilled, Star, ChatDotRound, Bell, Setting } from '@element-plus/icons-vue'
+import { Shop, Plus, ArrowDown, ArrowRight, User, Goods, List, SwitchButton, Search, Location, Phone, Monitor, Timer, Basketball, Document, Present, UserFilled, Star, ChatDotRound, Bell, Setting, Loading } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -192,15 +200,22 @@ const authStore = useAuthStore()
 
 const searchKeyword = ref('')
 const productList = ref([])
+const productsLoading = ref(false)
+const productsError = ref(false)
 
 const userInfo = ref(authStore.userInfo)
 
 const loadProducts = async () => {
+  productsLoading.value = true
+  productsError.value = false
   try {
     const res = await request({ url: '/products', method: 'get' })
     productList.value = res.data || []
   } catch (e) {
     console.error('加载商品失败:', e)
+    productsError.value = true
+  } finally {
+    productsLoading.value = false
   }
 }
 
@@ -872,7 +887,29 @@ onMounted(() => {
   p {
     font-size: $font-size-sm;
     color: $color-text-placeholder;
-    margin: 0;
   }
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  color: $color-text-secondary;
+  gap: 12px;
+
+  .loading-spin {
+    animation: spin 1s linear infinite;
+  }
+
+  &.error-state {
+    color: $color-text-placeholder;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

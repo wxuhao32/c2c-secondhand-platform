@@ -40,11 +40,11 @@
           <div class="order-footer">
             <span class="order-time">{{ order.createdAt }}</span>
             <div class="order-actions" @click.stop>
-              <el-button v-if="order.status === 'pending_pay'" type="primary" size="small" @click="handlePay(order)">立即付款</el-button>
-              <el-button v-if="order.status === 'pending_pay'" size="small" @click="handleCancel(order)">取消订单</el-button>
-              <el-button v-if="order.status === 'pending_ship'" size="small" type="primary" plain>提醒发货</el-button>
-              <el-button v-if="order.status === 'shipped'" type="primary" size="small" @click="handleConfirmReceipt(order)">确认收货</el-button>
-              <el-button v-if="order.status === 'completed' && !order.hasReview" type="primary" size="small" @click="goToReview(order)">去评价</el-button>
+              <el-button v-if="order.status === 0" type="primary" size="small" @click="handlePay(order)">立即付款</el-button>
+              <el-button v-if="order.status === 0" size="small" @click="handleCancel(order)">取消订单</el-button>
+              <el-button v-if="order.status === 1" size="small" type="primary" plain>提醒发货</el-button>
+              <el-button v-if="order.status === 2" type="primary" size="small" @click="handleConfirmReceipt(order)">确认收货</el-button>
+              <el-button v-if="order.status === 3" type="primary" size="small" @click="goToReview(order)">去评价</el-button>
               <el-button size="small" @click="router.push(`/order/${order.id}`)">查看详情</el-button>
             </div>
           </div>
@@ -61,38 +61,46 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Goods } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { getOrderList, cancelOrder, confirmReceipt } from '@/api/order'
 
 const router = useRouter()
 const activeTab = ref('all')
 
 const statusMap = {
-  pending_pay: '待付款',
-  pending_ship: '待发货',
-  shipped: '运输中',
-  completed: '已完成',
-  cancelled: '已取消'
+  0: '待付款',
+  1: '待发货',
+  2: '运输中',
+  3: '已完成',
+  4: '已取消'
 }
 
 const tabs = computed(() => [
-  { label: '全部', value: 'all', count: 0 },
-  { label: '待付款', value: 'pending_pay', count: orders.value.filter(o => o.status === 'pending_pay').length },
-  { label: '待发货', value: 'pending_ship', count: orders.value.filter(o => o.status === 'pending_ship').length },
-  { label: '运输中', value: 'shipped', count: orders.value.filter(o => o.status === 'shipped').length },
-  { label: '已完成', value: 'completed', count: 0 }
+  { label: '全部', value: 'all', count: orders.value.length },
+  { label: '待付款', value: 0, count: orders.value.filter(o => o.status === 0).length },
+  { label: '待发货', value: 1, count: orders.value.filter(o => o.status === 1).length },
+  { label: '运输中', value: 2, count: orders.value.filter(o => o.status === 2).length },
+  { label: '已完成', value: 3, count: orders.value.filter(o => o.status === 3).length }
 ])
 
-const orders = ref([
-  { id: 1, orderNo: 'ORD20240115001', productTitle: '二手iPhone 13 Pro 256G', condition: '9成新', price: '3999', quantity: 1, status: 'pending_pay', createdAt: '2024-01-15 10:30', hasReview: false },
-  { id: 2, orderNo: 'ORD20240113002', productTitle: 'MacBook Air M2 星光色', condition: '几乎全新', price: '6800', quantity: 1, status: 'shipped', createdAt: '2024-01-13 14:22', hasReview: false },
-  { id: 3, orderNo: 'ORD20240110003', productTitle: 'AirPods Pro 2 USB-C', condition: '全新未拆', price: '1200', quantity: 1, status: 'completed', createdAt: '2024-01-10 09:15', hasReview: true },
-  { id: 4, orderNo: 'ORD20240108004', productTitle: 'Nintendo Switch OLED', condition: '9成新', price: '1800', quantity: 1, status: 'pending_ship', createdAt: '2024-01-08 16:45', hasReview: false },
-  { id: 5, orderNo: 'ORD20240105005', productTitle: 'Kindle Paperwhite 5', condition: '8成新', price: '650', quantity: 1, status: 'cancelled', createdAt: '2024-01-05 11:30', hasReview: false }
-])
+const orders = ref([])
+
+const loadOrders = async () => {
+  try {
+    const res = await getOrderList()
+    orders.value = res.data || []
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+onMounted(() => {
+  loadOrders()
+})
 
 const filteredOrders = computed(() => {
   if (activeTab.value === 'all') return orders.value
@@ -106,9 +114,12 @@ const handlePay = (order) => {
 const handleCancel = async (order) => {
   try {
     await ElMessageBox.confirm('确定要取消该订单吗？', '提示', { type: 'warning' })
-    order.status = 'cancelled'
+    await cancelOrder(order.id)
     ElMessage.success('订单已取消')
-  } catch {}
+    loadOrders()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('取消失败')
+  }
 }
 
 const handleConfirmReceipt = async (order) => {
@@ -118,9 +129,12 @@ const handleConfirmReceipt = async (order) => {
       cancelButtonText: '取消',
       type: 'info'
     })
-    order.status = 'completed'
+    await confirmReceipt(order.id)
     ElMessage.success('已确认收货')
-  } catch {}
+    loadOrders()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('确认失败')
+  }
 }
 
 const goToReview = (order) => {

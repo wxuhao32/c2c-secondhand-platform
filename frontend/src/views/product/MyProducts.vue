@@ -30,21 +30,21 @@
             <div v-else class="placeholder-image">
               <el-icon :size="24"><Goods /></el-icon>
             </div>
-            <span class="status-badge" :class="`status-${product.status}`">{{ statusMap[product.status] }}</span>
+            <span class="status-badge" :class="`status-${product.status}`">{{ statusMap[product.status] || '未知' }}</span>
           </div>
           <div class="product-info">
             <h3 class="product-title">{{ product.title }}</h3>
             <div class="product-meta">
               <span class="product-price">¥{{ product.price }}</span>
-              <span class="product-views">{{ product.views }}次浏览</span>
-              <span class="product-likes">{{ product.likes }}人想要</span>
+              <span class="product-views">{{ product.viewCount || 0 }}次浏览</span>
+              <span class="product-likes">{{ product.likeCount || 0 }}人想要</span>
             </div>
             <div class="product-time">发布于 {{ product.createdAt }}</div>
           </div>
           <div class="product-actions">
-            <el-button v-if="product.status === 'on_sale'" type="primary" text size="small" @click="handleEdit(product)">编辑</el-button>
-            <el-button v-if="product.status === 'on_sale'" text size="small" @click="toggleStatus(product, 'off_sale')">下架</el-button>
-            <el-button v-if="product.status === 'off_sale'" type="success" text size="small" @click="toggleStatus(product, 'on_sale')">重新上架</el-button>
+            <el-button v-if="product.status === 1" type="primary" text size="small" @click="handleEdit(product)">编辑</el-button>
+            <el-button v-if="product.status === 1" text size="small" @click="toggleStatus(product, 3)">下架</el-button>
+            <el-button v-if="product.status === 3" type="success" text size="small" @click="toggleStatus(product, 1)">重新上架</el-button>
             <el-button text size="small" type="danger" @click="handleDelete(product)">删除</el-button>
           </div>
         </div>
@@ -60,35 +60,51 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Goods } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { getMyProducts, updateProductStatus, deleteProduct } from '@/api/product'
 
 const router = useRouter()
 const activeTab = ref('all')
+const loading = ref(false)
 
 const statusMap = {
-  on_sale: '在售',
-  off_sale: '已下架',
-  sold: '已售出'
+  0: '待审核',
+  1: '在售',
+  2: '已售',
+  3: '已下架'
 }
 
 const tabs = computed(() => [
   { label: '全部', value: 'all', count: myProducts.value.length },
-  { label: '在售', value: 'on_sale', count: myProducts.value.filter(p => p.status === 'on_sale').length },
-  { label: '已下架', value: 'off_sale', count: myProducts.value.filter(p => p.status === 'off_sale').length },
-  { label: '已售出', value: 'sold', count: myProducts.value.filter(p => p.status === 'sold').length }
+  { label: '在售', value: 1, count: myProducts.value.filter(p => p.status === 1).length },
+  { label: '已下架', value: 3, count: myProducts.value.filter(p => p.status === 3).length },
+  { label: '已售出', value: 2, count: myProducts.value.filter(p => p.status === 2).length }
 ])
 
-const myProducts = ref([
-  { id: 1, title: '二手iPhone 13 Pro 256G 国行在保', price: '3999', image: '', status: 'on_sale', views: 128, likes: 15, createdAt: '2024-01-10' },
-  { id: 2, title: 'MacBook Air M2 8+256 星光色', price: '6800', image: '', status: 'on_sale', views: 256, likes: 32, createdAt: '2024-01-08' },
-  { id: 3, title: 'Nintendo Switch OLED 白色 日版', price: '1800', image: '', status: 'sold', views: 89, likes: 8, createdAt: '2024-01-05' },
-  { id: 4, title: 'Kindle Paperwhite 5 32GB', price: '650', image: '', status: 'off_sale', views: 45, likes: 3, createdAt: '2024-01-02' },
-  { id: 5, title: 'AirPods Pro 2 USB-C版本', price: '1200', image: '', status: 'on_sale', views: 67, likes: 11, createdAt: '2023-12-28' }
-])
+const myProducts = ref([])
+
+const loadMyProducts = async () => {
+  loading.value = true
+  try {
+    const res = await getMyProducts()
+    myProducts.value = (res.data || []).map(p => ({
+      ...p,
+      image: p.images ? (JSON.parse(p.images)[0] || '') : ''
+    }))
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadMyProducts()
+})
 
 const filteredProducts = computed(() => {
   if (activeTab.value === 'all') return myProducts.value
@@ -99,17 +115,25 @@ const handleEdit = (product) => {
   router.push(`/publish?id=${product.id}`)
 }
 
-const toggleStatus = (product, newStatus) => {
-  product.status = newStatus
-  ElMessage.success(newStatus === 'on_sale' ? '已重新上架' : '已下架')
+const toggleStatus = async (product, newStatus) => {
+  try {
+    await updateProductStatus(product.id, newStatus)
+    ElMessage.success(newStatus === 1 ? '已重新上架' : '已下架')
+    loadMyProducts()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
 }
 
 const handleDelete = async (product) => {
   try {
     await ElMessageBox.confirm('确定要删除该商品吗？删除后不可恢复', '提示', { type: 'warning' })
-    myProducts.value = myProducts.value.filter(p => p.id !== product.id)
+    await deleteProduct(product.id)
     ElMessage.success('商品已删除')
-  } catch {}
+    loadMyProducts()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
 }
 </script>
 

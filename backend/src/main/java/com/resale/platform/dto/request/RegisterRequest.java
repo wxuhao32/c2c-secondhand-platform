@@ -28,10 +28,9 @@ public class RegisterRequest {
     private String mobile;
 
     /**
-     * 邮箱
+     * 邮箱（选填）
      */
-    @NotBlank(message = "邮箱不能为空")
-    @Pattern(regexp = "^\\w+([.-]?\\w+)*@\\w+([.-]?\\w+)*(\\.\\w{2,})+$", message = "邮箱格式不正确")
+    @Pattern(regexp = "^$|^\\w+([.-]?\\w+)*@\\w+([.-]?\\w+)*(\\.\\w{2,})+$", message = "邮箱格式不正确")
     private String email;
 
     /**
