@@ -57,7 +57,6 @@ export const useAuthStore = defineStore('auth', {
         this.setUserInfo(response.data)
       } catch (error) {
         console.error('获取用户信息失败', error)
-        // 如果获取失败，可能是Token过期，清除登录状态
         if (error.response?.status === 401) {
           this.logout()
         }

@@ -199,8 +199,7 @@ const handleLogin = async () => {
       ElMessage.success('登录成功')
 
       const redirect = route.query.redirect || '/home'
-      await nextTick()
-      window.location.href = redirect
+      router.replace(redirect)
     } catch (error) {
       ElMessage.error(error.message || '登录失败')
       refreshCaptcha()

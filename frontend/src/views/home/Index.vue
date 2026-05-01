@@ -205,7 +205,7 @@ const productsError = ref(false)
 
 const userInfo = ref(authStore.userInfo)
 
-const loadProducts = async () => {
+const loadProducts = async (retryCount = 0) => {
   productsLoading.value = true
   productsError.value = false
   try {
@@ -213,6 +213,11 @@ const loadProducts = async () => {
     productList.value = res.data || []
   } catch (e) {
     console.error('加载商品失败:', e)
+    if (retryCount < 2) {
+      productsLoading.value = false
+      await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)))
+      return loadProducts(retryCount + 1)
+    }
     productsError.value = true
   } finally {
     productsLoading.value = false
@@ -303,10 +308,15 @@ const goToPublish = () => {
   router.push('/publish')
 }
 
-onMounted(() => {
-  if (!userInfo.value) {
-    authStore.initUserInfo()
-    userInfo.value = authStore.userInfo
+onMounted(async () => {
+  if (!userInfo.value || !userInfo.value.userId) {
+    try {
+      await authStore.initUserInfo()
+      userInfo.value = authStore.userInfo
+    } catch (e) {
+      console.warn('获取用户信息失败，使用本地缓存')
+      userInfo.value = authStore.userInfo
+    }
   }
   loadProducts()
 })

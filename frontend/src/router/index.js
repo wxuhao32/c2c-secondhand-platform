@@ -140,7 +140,7 @@ router.beforeEach((to, from, next) => {
   }
 
   const authStore = useAuthStore()
-  const token = authStore.token
+  const token = authStore.token || localStorage.getItem('resale_platform_token')
   const requiresAuth = to.meta.requiresAuth !== false
 
   if (requiresAuth && !token) {
@@ -148,7 +148,7 @@ router.beforeEach((to, from, next) => {
       name: 'Login',
       query: { redirect: to.fullPath }
     })
-  } else if (to.name === 'Login' && token) {
+  } else if ((to.name === 'Login' || to.name === 'LoginSms' || to.name === 'Register') && token) {
     next({ name: 'Home' })
   } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next({ name: 'Home' })

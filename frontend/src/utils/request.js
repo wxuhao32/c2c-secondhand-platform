@@ -81,12 +81,17 @@ service.interceptors.response.use(
     return Promise.reject(new Error(res.message || '操作失败'))
   },
   (error) => {
-    if (error.config?._silent) {
-      return Promise.reject(error)
-    }
+    const config = error.config
 
     if (error.response) {
       const status = error.response.status
+
+      if ([502, 503, 504].includes(status) && config && (!config._retryCount || config._retryCount < 2)) {
+        config._retryCount = (config._retryCount || 0) + 1
+        return new Promise(resolve => {
+          setTimeout(() => resolve(service(config)), 3000 * config._retryCount)
+        })
+      }
 
       switch (status) {
         case 400:
