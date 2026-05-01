@@ -2,7 +2,7 @@
   <header class="page-header">
     <div class="header-inner">
       <div class="header-left">
-        <el-button text class="back-btn" @click="router.back()">
+        <el-button v-if="showBack" text class="back-btn" @click="handleBack">
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
         <h1 class="page-title">{{ title }}</h1>
@@ -18,11 +18,23 @@
 import { useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
-defineProps({
-  title: { type: String, required: true }
+const props = defineProps({
+  title: { type: String, required: true },
+  showBack: { type: Boolean, default: true }
 })
 
+const emit = defineEmits(['back'])
+
 const router = useRouter()
+
+const handleBack = () => {
+  emit('back')
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.replace('/home')
+  }
+}
 </script>
 
 <style lang="scss" scoped>

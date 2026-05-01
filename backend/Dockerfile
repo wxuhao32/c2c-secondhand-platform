@@ -24,6 +24,6 @@ EXPOSE 10000
 # 设置环境变量
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV SERVER_PORT=10000
+ENV TZ=Asia/Shanghai
 
-# 启动应用
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "app.jar"]

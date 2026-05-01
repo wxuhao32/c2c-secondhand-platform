@@ -98,6 +98,14 @@ const openChat = (conv) => {
   })
 }
 
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.replace('/home')
+  }
+}
+
 const formatTime = (time) => {
   if (!time) return ''
   const date = new Date(time)

@@ -307,7 +307,11 @@ const getMessageStatusIcon = (msg) => {
 }
 
 const goBack = () => {
-  router.push('/messages')
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.replace('/messages')
+  }
 }
 
 onMounted(() => {
