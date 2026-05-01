@@ -62,7 +62,7 @@ public class AdminController {
         } else if (role != null && !role.isEmpty()) {
             users = userMapper.selectByRole(role);
         } else {
-            users = userMapper.selectAll();
+            users = userMapper.selectList(null);
         }
         users.forEach(u -> u.setPassword(null));
         return Result.success(users);
@@ -192,8 +192,9 @@ public class AdminController {
                 message.setCreatedAt(LocalDateTime.now());
                 messageMapper.insert(message);
             } else {
-                List<User> allUsers = userMapper.selectAll();
+                List<User> allUsers = userMapper.selectList(null);
                 for (User user : allUsers) {
+                    if (user.getUserId() == null) continue;
                     Message message = new Message();
                     message.setSenderId(null);
                     message.setReceiverId(user.getUserId());
