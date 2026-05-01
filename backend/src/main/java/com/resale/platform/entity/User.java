@@ -41,6 +41,7 @@ public class User implements Serializable {
     /**
      * 密码
      */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private String password;
 
     /**

@@ -1,5 +1,7 @@
 package com.resale.platform.controller;
 
+import com.resale.platform.common.BusinessException;
+import com.resale.platform.common.ExceptionEnum;
 import com.resale.platform.common.Result;
 import com.resale.platform.dto.request.LoginRequest;
 import com.resale.platform.dto.request.RegisterRequest;
@@ -63,7 +65,10 @@ public class AuthController {
     @Operation(summary = "发送短信验证码", description = "发送手机短信验证码，需先通过图形验证码校验")
     public Result<Map<String, String>> sendSms(@Valid @RequestBody SendSmsRequest request) {
         // 校验图形验证码
-        captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        boolean captchaValid = captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        if (!captchaValid) {
+            throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
+        }
         
         // 发送短信
         String smsKey = smsService.sendLoginCode(request.getMobile());

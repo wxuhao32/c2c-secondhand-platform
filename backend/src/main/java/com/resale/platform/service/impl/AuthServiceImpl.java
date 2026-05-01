@@ -51,7 +51,10 @@ public class AuthServiceImpl implements AuthService {
         String password = request.getPassword();
         boolean rememberMe = Boolean.TRUE.equals(request.getRememberMe());
 
-        captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        boolean captchaValid = captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        if (!captchaValid) {
+            throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
+        }
 
         User user = findUserByAccount(account);
         if (user == null) {
@@ -83,7 +86,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long register(RegisterRequest request) {
-        captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        boolean captchaValid = captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        if (!captchaValid) {
+            throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
+        }
 
         User existUser = userMapper.selectByUsername(request.getUsername());
         if (existUser != null) {

@@ -20,10 +20,10 @@ public interface UserMapper extends BaseMapper<User> {
 
     User selectByWechatOpenid(String openid);
 
-    @Select("SELECT id AS userId, username, password, nickname, avatar, mobile, email, wechat_openid AS wechatOpenid, role, is_deleted AS isDeleted, created_at AS createdAt, updated_at AS updatedAt, last_login_time AS lastLoginTime, last_login_ip AS lastLoginIp FROM users WHERE is_deleted = 0 ORDER BY created_at DESC")
+    @Select("SELECT id AS userId, username, password, nickname, avatar, mobile, email, role, is_deleted AS isDeleted, created_at AS createdAt, updated_at AS updatedAt, last_login_time AS lastLoginTime, last_login_ip AS lastLoginIp FROM users WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<User> selectAll();
 
-    @Select("SELECT id AS userId, username, password, nickname, avatar, mobile, email, wechat_openid AS wechatOpenid, role, is_deleted AS isDeleted, created_at AS createdAt, updated_at AS updatedAt, last_login_time AS lastLoginTime, last_login_ip AS lastLoginIp FROM users WHERE role = #{role} AND is_deleted = 0 ORDER BY created_at DESC")
+    @Select("SELECT id AS userId, username, password, nickname, avatar, mobile, email, role, is_deleted AS isDeleted, created_at AS createdAt, updated_at AS updatedAt, last_login_time AS lastLoginTime, last_login_ip AS lastLoginIp FROM users WHERE role = #{role} AND is_deleted = 0 ORDER BY created_at DESC")
     List<User> selectByRole(@Param("role") String role);
 
     @Update("UPDATE users SET last_login_time = #{lastLoginTime}, last_login_ip = #{lastLoginIp} WHERE id = #{userId}")
