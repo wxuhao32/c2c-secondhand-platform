@@ -17,6 +17,22 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 创建审计日志表
+CREATE TABLE IF NOT EXISTS audit_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT,
+    username VARCHAR(50),
+    module VARCHAR(50),
+    action VARCHAR(50),
+    description VARCHAR(500),
+    method VARCHAR(100),
+    path VARCHAR(255),
+    ip VARCHAR(50),
+    status_code INT,
+    duration BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 创建用户认证表
 CREATE TABLE IF NOT EXISTS user_auth (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,

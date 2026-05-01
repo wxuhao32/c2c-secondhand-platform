@@ -1,26 +1,20 @@
 package com.resale.platform.controller;
 
+import com.resale.platform.common.AuditLog;
 import com.resale.platform.common.Result;
-import com.resale.platform.entity.User;
-import com.resale.platform.entity.Goods;
 import com.resale.platform.entity.Comment;
+import com.resale.platform.entity.Goods;
 import com.resale.platform.entity.Order;
-import com.resale.platform.mapper.UserMapper;
-import com.resale.platform.mapper.GoodsMapper;
-import com.resale.platform.mapper.CommentMapper;
-import com.resale.platform.mapper.OrderMapper;
-import com.resale.platform.mapper.MessageMapper;
-import com.resale.platform.entity.Message;
-import com.resale.platform.security.SecurityUser;
+import com.resale.platform.entity.User;
+import com.resale.platform.service.AdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,185 +22,112 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@Tag(name = "管理员", description = "管理员后台管理接口")
 public class AdminController {
 
-    private final UserMapper userMapper;
-    private final GoodsMapper goodsMapper;
-    private final CommentMapper commentMapper;
-    private final OrderMapper orderMapper;
-    private final MessageMapper messageMapper;
+    private final AdminService adminService;
 
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "获取仪表盘数据", description = "获取系统概览统计数据")
     public Result<Map<String, Object>> getDashboard() {
-        Map<String, Object> dashboard = new HashMap<>();
-        dashboard.put("userCount", userMapper.selectCount(null));
-        dashboard.put("goodsCount", goodsMapper.selectCount(null));
-        dashboard.put("orderCount", orderMapper.selectCount(null));
-        dashboard.put("commentCount", commentMapper.selectCount(null));
-        return Result.success(dashboard);
+        return Result.success(adminService.getDashboard());
     }
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "获取用户列表", description = "管理员获取用户列表，支持搜索和角色筛选")
     public Result<List<User>> getUserList(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String role) {
-        List<User> users;
-        if (keyword != null && !keyword.isEmpty()) {
-            User byName = userMapper.selectByUsername(keyword);
-            User byMobile = userMapper.selectByMobile(keyword);
-            users = new java.util.ArrayList<>();
-            if (byName != null) users.add(byName);
-            if (byMobile != null && !users.contains(byMobile)) users.add(byMobile);
-        } else if (role != null && !role.isEmpty()) {
-            users = userMapper.selectByRole(role);
-        } else {
-            users = userMapper.selectList(null);
-        }
-        users.forEach(u -> u.setPassword(null));
-        return Result.success(users);
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
+            @Parameter(description = "角色筛选") @RequestParam(required = false) String role) {
+        return Result.success(adminService.getUserList(keyword, role));
     }
 
     @PutMapping("/users/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Void> updateUserStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
-        User user = userMapper.selectById(id);
-        if (user == null) return Result.error(404, "用户不存在");
-        Integer status = body.get("status");
-        if (status != null) {
-            user.setStatus(status);
-            user.setUpdatedAt(LocalDateTime.now());
-            userMapper.updateById(user);
-        }
+    @Operation(summary = "更新用户状态", description = "启用/禁用用户")
+    @AuditLog(module = "管理员", action = "更新用户状态", description = "管理员更新用户状态")
+    public Result<Void> updateUserStatus(
+            @Parameter(description = "用户ID") @PathVariable Long id,
+            @RequestBody Map<String, Integer> body) {
+        adminService.updateUserStatus(id, body.get("status"));
         return Result.success();
     }
 
     @PutMapping("/users/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Void> updateUserRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        User user = userMapper.selectById(id);
-        if (user == null) return Result.error(404, "用户不存在");
-        String role = body.get("role");
-        if (role != null && (role.equals("USER") || role.equals("ADMIN"))) {
-            user.setRole(role);
-            user.setUpdatedAt(LocalDateTime.now());
-            userMapper.updateById(user);
-        }
+    @Operation(summary = "更新用户角色", description = "修改用户角色（USER/ADMIN）")
+    @AuditLog(module = "管理员", action = "更新用户角色", description = "管理员更新用户角色")
+    public Result<Void> updateUserRole(
+            @Parameter(description = "用户ID") @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        adminService.updateUserRole(id, body.get("role"));
         return Result.success();
     }
 
     @GetMapping("/goods")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<List<Goods>> getGoodsList(@RequestParam(required = false) Integer status) {
-        List<Goods> goods;
-        if (status != null) {
-            goods = goodsMapper.findOnSale();
-        } else {
-            goods = goodsMapper.selectList(null);
-        }
-        return Result.success(goods);
+    @Operation(summary = "获取商品列表", description = "管理员获取所有商品")
+    public Result<List<Goods>> getGoodsList(
+            @Parameter(description = "商品状态") @RequestParam(required = false) Integer status) {
+        return Result.success(adminService.getGoodsList(status));
     }
 
     @PutMapping("/goods/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Void> updateGoodsStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
-        Goods goods = goodsMapper.selectById(id);
-        if (goods == null) return Result.error(404, "商品不存在");
-        Integer status = body.get("status");
-        if (status != null) {
-            goods.setStatus(status);
-            goods.setUpdatedAt(LocalDateTime.now());
-            goodsMapper.updateById(goods);
-        }
+    @Operation(summary = "更新商品状态", description = "管理员上架/下架商品")
+    @AuditLog(module = "管理员", action = "更新商品状态", description = "管理员更新商品状态")
+    public Result<Void> updateGoodsStatus(
+            @Parameter(description = "商品ID") @PathVariable Long id,
+            @RequestBody Map<String, Integer> body) {
+        adminService.updateGoodsStatus(id, body.get("status"));
         return Result.success();
     }
 
     @DeleteMapping("/goods/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Void> deleteGoods(@PathVariable Long id) {
-        Goods goods = goodsMapper.selectById(id);
-        if (goods == null) return Result.error(404, "商品不存在");
-        goods.setIsDeleted(1);
-        goods.setUpdatedAt(LocalDateTime.now());
-        goodsMapper.updateById(goods);
+    @Operation(summary = "删除商品", description = "管理员删除商品（软删除）")
+    @AuditLog(module = "管理员", action = "删除商品", description = "管理员删除商品")
+    public Result<Void> deleteGoods(
+            @Parameter(description = "商品ID") @PathVariable Long id) {
+        adminService.deleteGoods(id);
         return Result.success();
     }
 
     @GetMapping("/comments")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "获取评论列表", description = "管理员获取所有评论")
     public Result<List<Comment>> getCommentList() {
-        List<Comment> comments = commentMapper.selectList(null);
-        return Result.success(comments);
+        return Result.success(adminService.getCommentList());
     }
 
     @DeleteMapping("/comments/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Result<Void> deleteComment(@PathVariable Long id) {
-        Comment comment = commentMapper.selectById(id);
-        if (comment == null) return Result.error(404, "评论不存在");
-        comment.setIsDeleted(1);
-        comment.setUpdatedAt(LocalDateTime.now());
-        commentMapper.updateById(comment);
+    @Operation(summary = "删除评论", description = "管理员删除评论")
+    @AuditLog(module = "管理员", action = "删除评论", description = "管理员删除评论")
+    public Result<Void> deleteComment(
+            @Parameter(description = "评论ID") @PathVariable Long id) {
+        adminService.deleteComment(id);
         return Result.success();
     }
 
     @GetMapping("/orders")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "获取订单列表", description = "管理员获取所有订单")
     public Result<List<Order>> getOrderList() {
-        List<Order> orders = orderMapper.selectList(null);
-        return Result.success(orders);
+        return Result.success(adminService.getOrderList());
     }
 
     @PostMapping("/notify")
+    @Operation(summary = "发送通知", description = "管理员发送站内通知（可群发）")
+    @AuditLog(module = "管理员", action = "发送通知", description = "管理员发送站内通知")
     public Result<Void> sendNotification(@RequestBody Map<String, Object> body) {
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated() || "anonymous".equals(auth.getPrincipal())) {
-                return Result.error(401, "请先登录");
-            }
-            boolean isAdmin = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-            if (!isAdmin) {
-                return Result.error(403, "无管理员权限");
-            }
-
             String content = (String) body.get("content");
-            if (content == null || content.trim().isEmpty()) {
-                return Result.error(400, "消息内容不能为空");
-            }
-
-            Long receiverId = body.get("receiverId") != null ? Long.valueOf(body.get("receiverId").toString()) : null;
             String title = (String) body.getOrDefault("title", "系统通知");
+            Long receiverId = body.get("receiverId") != null ? Long.valueOf(body.get("receiverId").toString()) : null;
             Integer type = body.get("type") != null ? Integer.valueOf(body.get("type").toString()) : 0;
-
-            if (receiverId != null) {
-                Message message = new Message();
-                message.setSenderId(null);
-                message.setReceiverId(receiverId);
-                message.setType(type);
-                message.setTitle(title);
-                message.setContent(content);
-                message.setIsRead(0);
-                message.setIsDeleted(0);
-                message.setCreatedAt(LocalDateTime.now());
-                messageMapper.insert(message);
-            } else {
-                List<User> allUsers = userMapper.selectList(null);
-                for (User user : allUsers) {
-                    if (user.getUserId() == null) continue;
-                    Message message = new Message();
-                    message.setSenderId(null);
-                    message.setReceiverId(user.getUserId());
-                    message.setType(type);
-                    message.setTitle(title);
-                    message.setContent(content);
-                    message.setIsRead(0);
-                    message.setIsDeleted(0);
-                    message.setCreatedAt(LocalDateTime.now());
-                    messageMapper.insert(message);
-                }
-            }
+            adminService.sendNotification(receiverId, title, content, type);
             return Result.success();
         } catch (Exception e) {
             log.error("发送通知失败", e);

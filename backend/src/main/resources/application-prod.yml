@@ -1,44 +1,91 @@
-# 生产环境配置（Render 部署用）
 spring:
-  # 数据源配置 - H2 内存模式（免费版无磁盘，数据不持久化）
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:resale_platform;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;TIME ZONE='Asia/Shanghai'
-    username: sa
-    password: 
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:resale_platform}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
+      maximum-pool-size: 25
+      minimum-idle: 10
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      connection-test-query: SELECT 1
+      leak-detection-threshold: 60000
+      pool-name: ResaleMySQLPool
+      auto-commit: true
+      read-only: false
 
-  # 关闭 H2 控制台（生产环境）
   h2:
     console:
       enabled: false
 
-  # 数据库初始化
   sql:
     init:
-      mode: always
-      platform: h2
+      mode: never
 
-  # 禁用 Redis
   data:
     redis:
-      enabled: false
+      enabled: true
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: -1ms
+        shutdown-timeout: 200ms
 
-# 服务器配置
 server:
   port: ${SERVER_PORT:10000}
   servlet:
     context-path: /api
+  tomcat:
+    threads:
+      max: 300
+      min-spare: 20
+    max-connections: 10000
+    accept-count: 200
+    connection-timeout: 20000
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
 
-# 日志配置
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+    cache-enabled: true
+    default-statement-timeout: 30
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
 logging:
   level:
-    root: INFO
+    root: WARN
     com.resale.platform: INFO
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /data/logs/resale-platform.log
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 30
+      total-size-cap: 1GB

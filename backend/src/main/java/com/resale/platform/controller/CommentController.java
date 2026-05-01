@@ -1,125 +1,81 @@
 package com.resale.platform.controller;
 
+import com.resale.platform.common.AuditLog;
 import com.resale.platform.common.Result;
-import com.resale.platform.entity.Comment;
-import com.resale.platform.entity.User;
-import com.resale.platform.mapper.CommentMapper;
-import com.resale.platform.mapper.UserMapper;
 import com.resale.platform.security.SecurityUser;
+import com.resale.platform.service.CommentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
 @RequestMapping("/comments")
 @RequiredArgsConstructor
+@Tag(name = "评论管理", description = "商品评论、回复、点赞等接口")
 public class CommentController {
 
-    private final CommentMapper commentMapper;
-    private final UserMapper userMapper;
+    private final CommentService commentService;
 
     @GetMapping("/product/{productId}")
+    @Operation(summary = "获取商品评论", description = "获取指定商品的评论列表，含回复")
     public Result<List<Map<String, Object>>> getComments(
-            @PathVariable Long productId,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size) {
-        List<Comment> rootComments = commentMapper.findRootByGoodsId(productId);
-        List<Map<String, Object>> result = rootComments.stream().map(comment -> {
-            Map<String, Object> map = commentToMap(comment);
-            List<Comment> replies = commentMapper.findReplies(comment.getId());
-            map.put("replies", replies.stream().map(this::commentToMap).collect(Collectors.toList()));
-            return map;
-        }).collect(Collectors.toList());
-        return Result.success(result);
+            @Parameter(description = "商品ID") @PathVariable Long productId,
+            @Parameter(description = "页码") @RequestParam(required = false) Integer page,
+            @Parameter(description = "每页数量") @RequestParam(required = false) Integer size) {
+        List<Map<String, Object>> comments = commentService.getComments(productId, page, size);
+        return Result.success(comments);
     }
 
     @PostMapping
+    @Operation(summary = "发表评论", description = "对商品发表评论或回复")
+    @AuditLog(module = "评论", action = "发表", description = "用户发表评论")
     public Result<Map<String, Object>> addComment(@RequestBody Map<String, Object> body) {
         Long userId = getCurrentUserId();
-        Comment comment = new Comment();
-        comment.setGoodsId(Long.valueOf(body.get("productId").toString()));
-        comment.setUserId(userId);
-        comment.setContent((String) body.get("content"));
-        comment.setParentId(body.get("parentId") != null ? Long.valueOf(body.get("parentId").toString()) : 0L);
-        comment.setReplyToId(body.get("replyToId") != null ? Long.valueOf(body.get("replyToId").toString()) : 0L);
-        comment.setRating(body.get("rating") != null ? Integer.valueOf(body.get("rating").toString()) : 5);
-        comment.setLikeCount(0);
-        comment.setIsDeleted(0);
-        comment.setCreatedAt(LocalDateTime.now());
-        comment.setUpdatedAt(LocalDateTime.now());
-        commentMapper.insert(comment);
-        return Result.success(commentToMap(comment));
+        Map<String, Object> comment = commentService.addComment(userId, body);
+        return Result.success(comment);
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> deleteComment(@PathVariable Long id) {
+    @Operation(summary = "删除评论", description = "删除自己的评论")
+    @AuditLog(module = "评论", action = "删除", description = "用户删除评论")
+    public Result<Void> deleteComment(
+            @Parameter(description = "评论ID") @PathVariable Long id) {
         Long userId = getCurrentUserId();
-        Comment comment = commentMapper.selectById(id);
-        if (comment == null) return Result.error(404, "评论不存在");
-        if (!comment.getUserId().equals(userId)) return Result.error(403, "无权删除此评论");
-        comment.setIsDeleted(1);
-        comment.setUpdatedAt(LocalDateTime.now());
-        commentMapper.updateById(comment);
+        commentService.deleteComment(userId, id);
         return Result.success();
     }
 
     @GetMapping("/my")
+    @Operation(summary = "获取我的评论", description = "获取当前用户发表的所有评论")
     public Result<List<Map<String, Object>>> getMyComments() {
         Long userId = getCurrentUserId();
-        List<Comment> comments = commentMapper.findByUserId(userId);
-        List<Map<String, Object>> result = comments.stream().map(this::commentToMap).collect(Collectors.toList());
-        return Result.success(result);
+        List<Map<String, Object>> comments = commentService.getMyComments(userId);
+        return Result.success(comments);
     }
 
     @GetMapping("/product/{productId}/stats")
-    public Result<Map<String, Object>> getCommentStats(@PathVariable Long productId) {
-        int count = commentMapper.countByGoodsId(productId);
-        Double avgRating = commentMapper.avgRatingByGoodsId(productId);
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalCount", count);
-        stats.put("avgRating", avgRating != null ? Math.round(avgRating * 10) / 10.0 : 5.0);
+    @Operation(summary = "获取评论统计", description = "获取商品评论数量和平均评分")
+    public Result<Map<String, Object>> getCommentStats(
+            @Parameter(description = "商品ID") @PathVariable Long productId) {
+        Map<String, Object> stats = commentService.getCommentStats(productId);
         return Result.success(stats);
     }
 
     @PostMapping("/{id}/like")
-    public Result<Void> likeComment(@PathVariable Long id) {
-        commentMapper.incrementLikeCount(id);
+    @Operation(summary = "点赞评论", description = "对评论点赞")
+    public Result<Void> likeComment(
+            @Parameter(description = "评论ID") @PathVariable Long id) {
+        commentService.likeComment(id);
         return Result.success();
-    }
-
-    private Map<String, Object> commentToMap(Comment comment) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", comment.getId());
-        map.put("productId", comment.getGoodsId());
-        map.put("userId", comment.getUserId());
-        map.put("parentId", comment.getParentId());
-        map.put("replyToId", comment.getReplyToId());
-        map.put("content", comment.getContent());
-        map.put("rating", comment.getRating());
-        map.put("likeCount", comment.getLikeCount());
-        map.put("createdAt", comment.getCreatedAt());
-
-        User user = userMapper.selectById(comment.getUserId());
-        if (user != null) {
-            map.put("username", user.getNickname() != null ? user.getNickname() : user.getUsername());
-            map.put("avatar", user.getAvatar());
-        }
-        if (comment.getReplyToId() != null && comment.getReplyToId() > 0) {
-            User replyToUser = userMapper.selectById(comment.getReplyToId());
-            if (replyToUser != null) {
-                map.put("replyToName", replyToUser.getNickname() != null ? replyToUser.getNickname() : replyToUser.getUsername());
-            }
-        }
-        return map;
     }
 
     private Long getCurrentUserId() {

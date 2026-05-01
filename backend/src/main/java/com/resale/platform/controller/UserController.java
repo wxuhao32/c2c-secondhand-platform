@@ -1,25 +1,19 @@
 package com.resale.platform.controller;
 
+import com.resale.platform.common.AuditLog;
 import com.resale.platform.common.Result;
-import com.resale.platform.entity.User;
 import com.resale.platform.entity.UserAddress;
-import com.resale.platform.entity.Favorite;
-import com.resale.platform.entity.Goods;
-import com.resale.platform.mapper.UserMapper;
-import com.resale.platform.mapper.UserAddressMapper;
-import com.resale.platform.mapper.FavoriteMapper;
-import com.resale.platform.mapper.GoodsMapper;
-import com.resale.platform.mapper.OrderMapper;
 import com.resale.platform.security.SecurityUser;
+import com.resale.platform.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,186 +21,123 @@ import java.util.Map;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
+@Tag(name = "用户中心", description = "用户信息、地址、收藏、统计等接口")
 public class UserController {
 
-    private final UserMapper userMapper;
-    private final UserAddressMapper addressMapper;
-    private final FavoriteMapper favoriteMapper;
-    private final GoodsMapper goodsMapper;
-    private final OrderMapper orderMapper;
-    private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
 
     @GetMapping("/info")
+    @Operation(summary = "获取用户信息", description = "获取当前登录用户的详细信息")
     public Result<Map<String, Object>> getUserInfo() {
         Long userId = getCurrentUserId();
-        User user = userMapper.selectById(userId);
-        if (user == null) return Result.error(404, "用户不存在");
-        Map<String, Object> info = new HashMap<>();
-        info.put("userId", user.getUserId());
-        info.put("username", user.getUsername());
-        info.put("mobile", user.getMobile());
-        info.put("email", user.getEmail());
-        info.put("nickname", user.getNickname());
-        info.put("avatar", user.getAvatar());
-        info.put("status", user.getStatus());
-        info.put("role", user.getRole());
-        info.put("lastLoginTime", user.getLastLoginTime());
-        info.put("createTime", user.getCreatedAt());
+        Map<String, Object> info = userService.getUserInfo(userId);
         return Result.success(info);
     }
 
     @PutMapping("/info")
+    @Operation(summary = "更新用户信息", description = "修改昵称、邮箱、头像等")
+    @AuditLog(module = "用户", action = "更新信息", description = "用户更新个人信息")
     public Result<Void> updateUserInfo(@RequestBody Map<String, Object> body) {
         Long userId = getCurrentUserId();
-        User user = userMapper.selectById(userId);
-        if (user == null) return Result.error(404, "用户不存在");
-        if (body.containsKey("nickname")) user.setNickname((String) body.get("nickname"));
-        if (body.containsKey("email")) user.setEmail((String) body.get("email"));
-        if (body.containsKey("avatar")) user.setAvatar((String) body.get("avatar"));
-        user.setUpdatedAt(LocalDateTime.now());
-        userMapper.updateById(user);
+        userService.updateUserInfo(userId, body);
         return Result.success();
     }
 
     @PutMapping("/password")
+    @Operation(summary = "修改密码", description = "修改用户登录密码")
+    @AuditLog(module = "用户", action = "修改密码", description = "用户修改密码")
     public Result<Void> updatePassword(@RequestBody Map<String, String> body) {
         Long userId = getCurrentUserId();
-        User user = userMapper.selectById(userId);
-        String oldPassword = body.get("oldPassword");
-        String newPassword = body.get("newPassword");
-        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-            return Result.error(400, "原密码错误");
-        }
-        user.setPassword(passwordEncoder.encode(newPassword));
-        user.setUpdatedAt(LocalDateTime.now());
-        userMapper.updateById(user);
+        userService.updatePassword(userId, body.get("oldPassword"), body.get("newPassword"));
         return Result.success();
     }
 
     @PostMapping("/avatar")
+    @Operation(summary = "上传头像", description = "上传用户头像（占位接口）")
     public Result<Map<String, String>> updateAvatar() {
         return Result.success(Map.of("url", "/uploads/avatar-placeholder.jpg"));
     }
 
     @GetMapping("/address")
+    @Operation(summary = "获取地址列表", description = "获取用户的所有收货地址")
     public Result<List<UserAddress>> getAddressList() {
         Long userId = getCurrentUserId();
-        List<UserAddress> addresses = addressMapper.findByUserId(userId);
+        List<UserAddress> addresses = userService.getAddressList(userId);
         return Result.success(addresses);
     }
 
     @PostMapping("/address")
+    @Operation(summary = "添加地址", description = "添加新的收货地址")
+    @AuditLog(module = "用户", action = "添加地址", description = "用户添加收货地址")
     public Result<UserAddress> addAddress(@RequestBody UserAddress address) {
         Long userId = getCurrentUserId();
-        address.setUserId(userId);
-        address.setIsDeleted(0);
-        address.setCreatedAt(LocalDateTime.now());
-        address.setUpdatedAt(LocalDateTime.now());
-        addressMapper.insert(address);
-        return Result.success(address);
+        UserAddress saved = userService.addAddress(userId, address);
+        return Result.success(saved);
     }
 
     @PutMapping("/address/{id}")
-    public Result<Void> updateAddress(@PathVariable Long id, @RequestBody UserAddress address) {
+    @Operation(summary = "更新地址", description = "修改收货地址")
+    @AuditLog(module = "用户", action = "更新地址", description = "用户更新收货地址")
+    public Result<Void> updateAddress(
+            @Parameter(description = "地址ID") @PathVariable Long id,
+            @RequestBody UserAddress address) {
         Long userId = getCurrentUserId();
-        UserAddress existing = addressMapper.selectById(id);
-        if (existing == null || !existing.getUserId().equals(userId)) {
-            return Result.error(403, "无权操作");
-        }
-        address.setId(id);
-        address.setUserId(userId);
-        address.setUpdatedAt(LocalDateTime.now());
-        addressMapper.updateById(address);
+        userService.updateAddress(userId, id, address);
         return Result.success();
     }
 
     @DeleteMapping("/address/{id}")
-    public Result<Void> deleteAddress(@PathVariable Long id) {
+    @Operation(summary = "删除地址", description = "删除收货地址")
+    @AuditLog(module = "用户", action = "删除地址", description = "用户删除收货地址")
+    public Result<Void> deleteAddress(
+            @Parameter(description = "地址ID") @PathVariable Long id) {
         Long userId = getCurrentUserId();
-        UserAddress existing = addressMapper.selectById(id);
-        if (existing == null || !existing.getUserId().equals(userId)) {
-            return Result.error(403, "无权操作");
-        }
-        existing.setIsDeleted(1);
-        existing.setUpdatedAt(LocalDateTime.now());
-        addressMapper.updateById(existing);
+        userService.deleteAddress(userId, id);
         return Result.success();
     }
 
     @PutMapping("/address/{id}/default")
-    public Result<Void> setDefaultAddress(@PathVariable Long id) {
+    @Operation(summary = "设置默认地址", description = "将指定地址设为默认收货地址")
+    public Result<Void> setDefaultAddress(
+            @Parameter(description = "地址ID") @PathVariable Long id) {
         Long userId = getCurrentUserId();
-        addressMapper.clearDefault(userId);
-        UserAddress address = addressMapper.selectById(id);
-        if (address != null && address.getUserId().equals(userId)) {
-            address.setIsDefault(1);
-            address.setUpdatedAt(LocalDateTime.now());
-            addressMapper.updateById(address);
-        }
+        userService.setDefaultAddress(userId, id);
         return Result.success();
     }
 
     @GetMapping("/favorites")
+    @Operation(summary = "获取收藏列表", description = "获取用户收藏的所有商品")
     public Result<List<Map<String, Object>>> getFavorites() {
         Long userId = getCurrentUserId();
-        List<Favorite> favorites = favoriteMapper.findByUserId(userId);
-        List<Map<String, Object>> result = favorites.stream().map(fav -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", fav.getId());
-            map.put("goodsId", fav.getGoodsId());
-            map.put("createdAt", fav.getCreatedAt());
-            Goods goods = goodsMapper.selectById(fav.getGoodsId());
-            if (goods != null) {
-                map.put("title", goods.getTitle());
-                map.put("price", goods.getPrice());
-                map.put("originalPrice", goods.getOriginalPrice());
-                map.put("images", goods.getImages());
-                map.put("status", goods.getStatus());
-            }
-            return map;
-        }).toList();
-        return Result.success(result);
+        List<Map<String, Object>> favorites = userService.getFavorites(userId);
+        return Result.success(favorites);
     }
 
     @PostMapping("/favorites/{productId}")
-    public Result<Void> addFavorite(@PathVariable Long productId) {
+    @Operation(summary = "添加收藏", description = "收藏指定商品")
+    @AuditLog(module = "用户", action = "收藏", description = "用户收藏商品")
+    public Result<Void> addFavorite(
+            @Parameter(description = "商品ID") @PathVariable Long productId) {
         Long userId = getCurrentUserId();
-        int exists = favoriteMapper.countByUserAndGoods(userId, productId);
-        if (exists > 0) return Result.error(400, "已收藏");
-        Favorite favorite = new Favorite();
-        favorite.setUserId(userId);
-        favorite.setGoodsId(productId);
-        favorite.setCreatedAt(LocalDateTime.now());
-        favoriteMapper.insert(favorite);
-        goodsMapper.incrementLikeCount(productId);
+        userService.addFavorite(userId, productId);
         return Result.success();
     }
 
     @DeleteMapping("/favorites/{productId}")
-    public Result<Void> removeFavorite(@PathVariable Long productId) {
+    @Operation(summary = "取消收藏", description = "取消收藏指定商品")
+    @AuditLog(module = "用户", action = "取消收藏", description = "用户取消收藏商品")
+    public Result<Void> removeFavorite(
+            @Parameter(description = "商品ID") @PathVariable Long productId) {
         Long userId = getCurrentUserId();
-        List<Favorite> favorites = favoriteMapper.findByUserId(userId);
-        for (Favorite fav : favorites) {
-            if (fav.getGoodsId().equals(productId)) {
-                favoriteMapper.deleteById(fav.getId());
-                goodsMapper.decrementLikeCount(productId);
-                break;
-            }
-        }
+        userService.removeFavorite(userId, productId);
         return Result.success();
     }
 
     @GetMapping("/stats")
+    @Operation(summary = "获取用户统计", description = "获取用户的发布、交易、收藏等统计数据")
     public Result<Map<String, Object>> getUserStats() {
         Long userId = getCurrentUserId();
-        Map<String, Object> stats = new HashMap<>();
-        List<Goods> myGoods = goodsMapper.findBySellerId(userId);
-        stats.put("publishedCount", myGoods.size());
-        stats.put("onSaleCount", myGoods.stream().filter(g -> g.getStatus() == 1).count());
-        stats.put("soldCount", myGoods.stream().filter(g -> g.getStatus() == 3).count());
-        stats.put("favoriteCount", favoriteMapper.findByUserId(userId).size());
-        stats.put("boughtOrderCount", orderMapper.findByBuyerId(userId).size());
-        stats.put("soldOrderCount", orderMapper.findBySellerId(userId).size());
+        Map<String, Object> stats = userService.getUserStats(userId);
         return Result.success(stats);
     }
 

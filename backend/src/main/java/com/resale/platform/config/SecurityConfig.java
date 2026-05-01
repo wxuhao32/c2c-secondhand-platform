@@ -93,6 +93,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .requestMatchers("/search/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().authenticated()
             )
             // 添加JWT过滤器在AuthorizationFilter之前

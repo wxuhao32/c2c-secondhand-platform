@@ -12,6 +12,8 @@ import com.resale.platform.security.SecurityUser;
 import com.resale.platform.service.AuthService;
 import com.resale.platform.service.CaptchaService;
 import com.resale.platform.service.SmsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,16 +25,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 认证控制器
- * 处理用户登录、注册、登出等认证相关请求
- *
- * @author MiniMax Agent
- */
 @Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Tag(name = "认证授权", description = "用户登录、注册、短信验证、登出等认证接口")
 public class AuthController {
 
     private final AuthService authService;
@@ -40,13 +37,8 @@ public class AuthController {
     private final SmsService smsService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    /**
-     * 获取图形验证码
-     * GET /api/auth/captcha
-     *
-     * @return 包含验证码图片Base64和Key
-     */
     @GetMapping("/captcha")
+    @Operation(summary = "获取图形验证码", description = "生成图形验证码，返回Base64图片和验证Key")
     public Result<Map<String, String>> getCaptcha() {
         Object[] result = captchaService.generateCaptcha();
         Map<String, String> data = new HashMap<>();
@@ -55,15 +47,8 @@ public class AuthController {
         return Result.success(data);
     }
 
-    /**
-     * 账号密码登录
-     * POST /api/auth/login
-     *
-     * @param request 登录请求
-     * @param httpRequest HTTP请求（用于获取IP）
-     * @return 登录响应
-     */
     @PostMapping("/login")
+    @Operation(summary = "账号密码登录", description = "使用用户名/手机号+密码登录")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String ipAddress = getClientIp(httpRequest);
         log.info("登录请求: account={}, ip={}", maskAccount(request.getAccount()), ipAddress);
@@ -74,14 +59,8 @@ public class AuthController {
         return Result.success(response);
     }
 
-    /**
-     * 发送短信验证码
-     * POST /api/auth/sendSms
-     *
-     * @param request 发送短信请求
-     * @return 验证码Key
-     */
     @PostMapping("/sendSms")
+    @Operation(summary = "发送短信验证码", description = "发送手机短信验证码，需先通过图形验证码校验")
     public Result<Map<String, String>> sendSms(@Valid @RequestBody SendSmsRequest request) {
         // 校验图形验证码
         captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
@@ -95,14 +74,8 @@ public class AuthController {
         return Result.success("验证码发送成功", data);
     }
 
-    /**
-     * 手机验证码登录
-     * POST /api/auth/loginBySms
-     *
-     * @param request 短信登录请求
-     * @return 登录响应
-     */
     @PostMapping("/loginBySms")
+    @Operation(summary = "短信验证码登录", description = "使用手机号+短信验证码登录，新用户自动注册")
     public Result<LoginResponse> loginBySms(@Valid @RequestBody SmsLoginRequest request) {
         log.info("短信登录请求: mobile={}", maskMobile(request.getMobile()));
         
@@ -116,15 +89,8 @@ public class AuthController {
         return Result.success(response);
     }
 
-    /**
-     * 微信OAuth回调
-     * GET /api/auth/wechat/callback
-     *
-     * @param code 微信授权码
-     * @param state 状态参数
-     * @return 重定向到前端
-     */
     @GetMapping("/wechat/callback")
+    @Operation(summary = "微信OAuth回调", description = "微信授权登录回调接口")
     public Result<Map<String, String>> wechatCallback(@RequestParam String code, @RequestParam String state) {
         log.info("微信回调: code={}, state={}", code, state);
         
@@ -138,14 +104,8 @@ public class AuthController {
         return Result.success(data);
     }
 
-    /**
-     * 用户注册
-     * POST /api/auth/register
-     *
-     * @param request 注册请求
-     * @return 用户ID
-     */
     @PostMapping("/register")
+    @Operation(summary = "用户注册", description = "用户名+密码注册新账号")
     public Result<Map<String, Long>> register(@Valid @RequestBody RegisterRequest request) {
         log.info("注册请求: username={}, mobile={}", request.getUsername(), maskMobile(request.getMobile()));
         
@@ -158,14 +118,8 @@ public class AuthController {
         return Result.created(data);
     }
 
-    /**
-     * 登出
-     * POST /api/auth/logout
-     *
-     * @param authorization Authorization头
-     * @return 结果
-     */
     @PostMapping("/logout")
+    @Operation(summary = "登出", description = "用户登出，将Token加入黑名单")
     public Result<Void> logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
         if (authorization != null && authorization.startsWith("Bearer ")) {
             String token = authorization.substring(7);
@@ -175,13 +129,8 @@ public class AuthController {
         return Result.success("登出成功", null);
     }
 
-    /**
-     * 获取当前用户信息
-     * GET /api/auth/currentUser
-     *
-     * @return 用户信息
-     */
     @GetMapping("/currentUser")
+    @Operation(summary = "获取当前用户", description = "获取当前登录用户的详细信息")
     public Result<UserInfoResponse> getCurrentUser() {
         SecurityUser userDetails = getCurrentUserDetails();
         UserInfoResponse userInfo = authService.getCurrentUser(userDetails.getUserId());
@@ -189,6 +138,7 @@ public class AuthController {
     }
 
     @GetMapping("/sms-codes")
+    @Operation(summary = "获取最近验证码", description = "开发环境获取最近发送的短信验证码列表")
     public Result<java.util.List<Map<String, Object>>> getRecentSmsCodes() {
         return Result.success(smsService.getRecentSmsCodes());
     }

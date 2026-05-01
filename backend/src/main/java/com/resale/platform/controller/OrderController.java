@@ -1,163 +1,111 @@
 package com.resale.platform.controller;
 
+import com.resale.platform.common.AuditLog;
 import com.resale.platform.common.Result;
 import com.resale.platform.entity.Order;
-import com.resale.platform.entity.Goods;
-import com.resale.platform.mapper.OrderMapper;
-import com.resale.platform.mapper.GoodsMapper;
 import com.resale.platform.security.SecurityUser;
+import com.resale.platform.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
+@Tag(name = "订单管理", description = "订单创建、支付、发货、确认收货等接口")
 public class OrderController {
 
-    private final OrderMapper orderMapper;
-    private final GoodsMapper goodsMapper;
+    private final OrderService orderService;
 
     @GetMapping
-    public Result<List<Order>> getOrderList(@RequestParam(required = false) Integer status) {
+    @Operation(summary = "获取订单列表", description = "获取当前用户的订单列表，可按状态筛选")
+    public Result<List<Order>> getOrderList(
+            @Parameter(description = "订单状态") @RequestParam(required = false) Integer status) {
         Long userId = getCurrentUserId();
-        List<Order> orders;
-        if (status != null) {
-            orders = orderMapper.findByBuyerIdAndStatus(userId, status);
-        } else {
-            orders = orderMapper.findByBuyerId(userId);
-        }
+        List<Order> orders = orderService.getOrderList(userId, status);
         return Result.success(orders);
     }
 
     @GetMapping("/{id}")
-    public Result<Order> getOrderDetail(@PathVariable Long id) {
-        Order order = orderMapper.selectById(id);
-        if (order == null || order.getIsDeleted() == 1) {
-            return Result.error(404, "订单不存在");
-        }
+    @Operation(summary = "获取订单详情", description = "根据ID获取订单详细信息")
+    public Result<Order> getOrderDetail(
+            @Parameter(description = "订单ID") @PathVariable Long id) {
+        Order order = orderService.getOrderDetail(id);
         return Result.success(order);
     }
 
     @PostMapping
+    @Operation(summary = "创建订单", description = "买家创建购买订单")
+    @AuditLog(module = "订单", action = "创建", description = "买家创建购买订单")
     public Result<Order> createOrder(@RequestBody Map<String, Object> body) {
         Long userId = getCurrentUserId();
-        Long goodsId = Long.valueOf(body.get("goodsId").toString());
-        Goods goods = goodsMapper.selectById(goodsId);
-        if (goods == null || goods.getIsDeleted() == 1 || goods.getStatus() != 1) {
-            return Result.error(400, "商品不可购买");
-        }
-        if (goods.getSellerId().equals(userId)) {
-            return Result.error(400, "不能购买自己的商品");
-        }
-
-        Order order = new Order();
-        order.setOrderNo(generateOrderNo());
-        order.setBuyerId(userId);
-        order.setSellerId(goods.getSellerId());
-        order.setGoodsId(goodsId);
-        order.setPrice(goods.getPrice());
-        order.setStatus(0);
-        order.setAddress(body.get("address") != null ? body.get("address").toString() : null);
-        order.setRemark(body.get("remark") != null ? body.get("remark").toString() : null);
-        order.setIsDeleted(0);
-        order.setCreatedAt(LocalDateTime.now());
-        order.setUpdatedAt(LocalDateTime.now());
-        orderMapper.insert(order);
-
-        goods.setStatus(2);
-        goods.setUpdatedAt(LocalDateTime.now());
-        goodsMapper.updateById(goods);
-
+        Order order = orderService.createOrder(userId, body);
         return Result.success(order);
     }
 
     @PutMapping("/{id}/cancel")
-    public Result<Void> cancelOrder(@PathVariable Long id) {
+    @Operation(summary = "取消订单", description = "买家或卖家取消订单")
+    @AuditLog(module = "订单", action = "取消", description = "取消订单")
+    public Result<Void> cancelOrder(
+            @Parameter(description = "订单ID") @PathVariable Long id) {
         Long userId = getCurrentUserId();
-        Order order = orderMapper.selectById(id);
-        if (order == null) return Result.error(404, "订单不存在");
-        if (!order.getBuyerId().equals(userId) && !order.getSellerId().equals(userId)) {
-            return Result.error(403, "无权操作此订单");
-        }
-        order.setStatus(4);
-        order.setUpdatedAt(LocalDateTime.now());
-        orderMapper.updateById(order);
-
-        Goods goods = goodsMapper.selectById(order.getGoodsId());
-        if (goods != null) {
-            goods.setStatus(1);
-            goods.setUpdatedAt(LocalDateTime.now());
-            goodsMapper.updateById(goods);
-        }
+        orderService.cancelOrder(userId, id);
         return Result.success();
     }
 
     @PutMapping("/{id}/confirm")
-    public Result<Void> confirmReceipt(@PathVariable Long id) {
+    @Operation(summary = "确认收货", description = "买家确认收货")
+    @AuditLog(module = "订单", action = "确认收货", description = "买家确认收货")
+    public Result<Void> confirmReceipt(
+            @Parameter(description = "订单ID") @PathVariable Long id) {
         Long userId = getCurrentUserId();
-        Order order = orderMapper.selectById(id);
-        if (order == null) return Result.error(404, "订单不存在");
-        if (!order.getBuyerId().equals(userId)) return Result.error(403, "无权操作此订单");
-        order.setStatus(3);
-        order.setUpdatedAt(LocalDateTime.now());
-        orderMapper.updateById(order);
+        orderService.confirmReceipt(userId, id);
         return Result.success();
     }
 
     @PostMapping("/{id}/pay")
-    public Result<Void> payOrder(@PathVariable Long id) {
+    @Operation(summary = "支付订单", description = "买家支付订单")
+    @AuditLog(module = "订单", action = "支付", description = "买家支付订单")
+    public Result<Void> payOrder(
+            @Parameter(description = "订单ID") @PathVariable Long id) {
         Long userId = getCurrentUserId();
-        Order order = orderMapper.selectById(id);
-        if (order == null) return Result.error(404, "订单不存在");
-        if (!order.getBuyerId().equals(userId)) return Result.error(403, "无权操作此订单");
-        if (order.getStatus() != 0) return Result.error(400, "订单状态不正确");
-        order.setStatus(1);
-        order.setUpdatedAt(LocalDateTime.now());
-        orderMapper.updateById(order);
+        orderService.payOrder(userId, id);
         return Result.success();
     }
 
     @PutMapping("/{id}/ship")
-    public Result<Void> shipOrder(@PathVariable Long id) {
+    @Operation(summary = "发货", description = "卖家发货")
+    @AuditLog(module = "订单", action = "发货", description = "卖家发货")
+    public Result<Void> shipOrder(
+            @Parameter(description = "订单ID") @PathVariable Long id) {
         Long userId = getCurrentUserId();
-        Order order = orderMapper.selectById(id);
-        if (order == null) return Result.error(404, "订单不存在");
-        if (!order.getSellerId().equals(userId)) return Result.error(403, "无权操作此订单");
-        if (order.getStatus() != 1) return Result.error(400, "订单状态不正确");
-        order.setStatus(2);
-        order.setUpdatedAt(LocalDateTime.now());
-        orderMapper.updateById(order);
+        orderService.shipOrder(userId, id);
         return Result.success();
     }
 
     @GetMapping("/sold")
+    @Operation(summary = "获取卖出订单", description = "获取卖家卖出的所有订单")
     public Result<List<Order>> getSoldOrders() {
         Long userId = getCurrentUserId();
-        List<Order> orders = orderMapper.findBySellerId(userId);
+        List<Order> orders = orderService.getSoldOrders(userId);
         return Result.success(orders);
     }
 
     @GetMapping("/bought")
+    @Operation(summary = "获取买入订单", description = "获取买家买入的所有订单")
     public Result<List<Order>> getBoughtOrders() {
         Long userId = getCurrentUserId();
-        List<Order> orders = orderMapper.findByBuyerId(userId);
+        List<Order> orders = orderService.getBoughtOrders(userId);
         return Result.success(orders);
-    }
-
-    private String generateOrderNo() {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        int random = ThreadLocalRandom.current().nextInt(1000, 9999);
-        return timestamp + random;
     }
 
     private Long getCurrentUserId() {
