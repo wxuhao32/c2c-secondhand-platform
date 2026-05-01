@@ -12,8 +12,6 @@ services:
         value: 17
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: SERVER_PORT
-        value: 10000
     disk:
       name: data
       mountPath: /data
