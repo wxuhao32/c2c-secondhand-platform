@@ -3,9 +3,9 @@
 
 -- 插入测试用户（密码：Test123456）
 MERGE INTO users (id, username, password, mobile, email, nickname, avatar, status, role, last_login_time, last_login_ip) KEY(id) VALUES
-(1, 'admin', '$2a$12$938AubesljVp7HCTTQZf3O.HLlwkZDqcmGjwvdVkQLhT7NpMtT2xC', '13800138000', 'admin@example.com', '管理员', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 1, 'ADMIN', NULL, NULL),
-(2, 'user1', '$2a$12$938AubesljVp7HCTTQZf3O.HLlwkZDqcmGjwvdVkQLhT7NpMtT2xC', '13800138001', 'user1@example.com', '测试用户1', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user1', 1, 'USER', NULL, NULL),
-(3, 'user2', '$2a$12$938AubesljVp7HCTTQZf3O.HLlwkZDqcmGjwvdVkQLhT7NpMtT2xC', '13800138002', 'user2@example.com', '测试用户2', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user2', 1, 'USER', NULL, NULL);
+(1, 'admin', '$2a$12$938AubesljVp7HCTTQZf3O.HLlwkZDqcmGjwvdVkQLhT7NpMtT2xC', '13800138000', 'admin@example.com', '管理员', NULL, 1, 'ADMIN', NULL, NULL),
+(2, 'user1', '$2a$12$938AubesljVp7HCTTQZf3O.HLlwkZDqcmGjwvdVkQLhT7NpMtT2xC', '13800138001', 'user1@example.com', '测试用户1', NULL, 1, 'USER', NULL, NULL),
+(3, 'user2', '$2a$12$938AubesljVp7HCTTQZf3O.HLlwkZDqcmGjwvdVkQLhT7NpMtT2xC', '13800138002', 'user2@example.com', '测试用户2', NULL, 1, 'USER', NULL, NULL);
 
 -- 插入商品分类
 MERGE INTO category (id, name, parent_id, icon, sort_order) KEY(id) VALUES
@@ -29,16 +29,16 @@ MERGE INTO category (id, name, parent_id, icon, sort_order) KEY(id) VALUES
 (18, '运动器材', 17, '🏋️', 1),
 (19, '户外装备', 17, '⛺', 2);
 
--- 插入测试商品
+-- 插入测试商品（使用内联SVG，不依赖外部图片服务）
 MERGE INTO goods (id, seller_id, title, description, price, original_price, category_id, images, status, view_count, like_count) KEY(id) VALUES
-(1, 2, 'iPhone 13 Pro Max 256G 远峰蓝', '自用iPhone 13 Pro Max，成色99新，无划痕，电池健康度92%，带原装盒子和配件。', 6500.00, 8999.00, 2, '["https://via.placeholder.com/400x400/4A90E2/FFFFFF?text=iPhone+13+Pro+Max"]', 1, 128, 15),
-(2, 2, 'MacBook Pro 14寸 M1 Pro芯片', '2021款MacBook Pro，16G内存+512G固态，轻度使用，外观完美。', 8500.00, 14999.00, 3, '["https://via.placeholder.com/400x400/7B68EE/FFFFFF?text=MacBook+Pro"]', 1, 256, 32),
-(3, 3, '索尼A7M3相机机身', '索尼A7M3全画幅微单，快门次数5000左右，成色很新，功能正常。', 8500.00, 12000.00, 4, '["https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Sony+A7M3"]', 1, 89, 8),
-(4, 2, 'Nike Air Jordan 1 芝加哥配色', 'AJ1芝加哥，42码，全新未穿，鞋盒完好，保真。', 2800.00, 3500.00, 8, '["https://via.placeholder.com/400x400/E74C3C/FFFFFF?text=AJ1+Chicago"]', 1, 67, 23),
-(5, 3, '宜家布艺沙发三人位', '宜家三人位布艺沙发，使用2年，保养良好，无污渍，需要自提。', 800.00, 2999.00, 11, '["https://via.placeholder.com/400x400/95A5A6/FFFFFF?text=IKEA+Sofa"]', 1, 45, 5),
-(6, 2, '《Java编程思想》第4版', '经典Java书籍，九成新，无笔记划线，适合学习使用。', 45.00, 108.00, 15, '["https://via.placeholder.com/400x400/3498DB/FFFFFF?text=Java+Book"]', 1, 34, 2),
-(7, 3, '迪卡侬山地自行车', '迪卡侬ST100山地车，26寸，21速，骑行不到100公里，几乎全新。', 600.00, 1299.00, 18, '["https://via.placeholder.com/400x400/2ECC71/FFFFFF?text=Bike"]', 1, 78, 12),
-(8, 2, 'ZARA冬季羽绒服', 'ZARA男士羽绒服，L码，黑色，仅试穿，吊牌还在。', 350.00, 899.00, 6, '["https://via.placeholder.com/400x400/34495E/FFFFFF?text=ZARA+Coat"]', 1, 56, 7);
+(1, 2, 'iPhone 13 Pro Max 256G 远峰蓝', '自用iPhone 13 Pro Max，成色99新，无划痕，电池健康度92%，带原装盒子和配件。', 6500.00, 8999.00, 2, NULL, 1, 128, 15),
+(2, 2, 'MacBook Pro 14寸 M1 Pro芯片', '2021款MacBook Pro，16G内存+512G固态，轻度使用，外观完美。', 8500.00, 14999.00, 3, NULL, 1, 256, 32),
+(3, 3, '索尼A7M3相机机身', '索尼A7M3全画幅微单，快门次数5000左右，成色很新，功能正常。', 8500.00, 12000.00, 4, NULL, 1, 89, 8),
+(4, 2, 'Nike Air Jordan 1 芝加哥配色', 'AJ1芝加哥，42码，全新未穿，鞋盒完好，保真。', 2800.00, 3500.00, 8, NULL, 1, 67, 23),
+(5, 3, '宜家布艺沙发三人位', '宜家三人位布艺沙发，使用2年，保养良好，无污渍，需要自提。', 800.00, 2999.00, 11, NULL, 1, 45, 5),
+(6, 2, '《Java编程思想》第4版', '经典Java书籍，九成新，无笔记划线，适合学习使用。', 45.00, 108.00, 15, NULL, 1, 34, 2),
+(7, 3, '迪卡侬山地自行车', '迪卡侬ST100山地车，26寸，21速，骑行不到100公里，几乎全新。', 600.00, 1299.00, 18, NULL, 1, 78, 12),
+(8, 2, 'ZARA冬季羽绒服', 'ZARA男士羽绒服，L码，黑色，仅试穿，吊牌还在。', 350.00, 899.00, 6, NULL, 1, 56, 7);
 
 -- 插入测试订单
 MERGE INTO orders (id, order_no, buyer_id, seller_id, goods_id, price, status, address, remark) KEY(id) VALUES

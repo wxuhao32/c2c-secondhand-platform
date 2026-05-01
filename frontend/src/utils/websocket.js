@@ -13,7 +13,7 @@ class WebSocketClient {
     this.connected = false
     this.pollingInterval = null
     this.pollingEnabled = false
-    this.pollingDelay = 5000
+    this.pollingDelay = /Mobi|Android/i.test(navigator.userAgent) ? 30000 : 15000
     this.lastPollTime = null
   }
 

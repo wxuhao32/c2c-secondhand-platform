@@ -29,12 +29,25 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'element-plus': ['element-plus', '@element-plus/icons-vue'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'axios-vendor': ['axios']
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('element-plus')) {
+              if (id.includes('@element-plus/icons-vue')) {
+                return 'ep-icons'
+              }
+              return 'element-plus'
+            }
+            if (id.includes('vue') || id.includes('pinia')) {
+              return 'vue-vendor'
+            }
+            if (id.includes('axios')) {
+              return 'axios-vendor'
+            }
+            return 'vendor'
+          }
         }
       }
-    }
+    },
+    chunkSizeWarningLimit: 1000
   }
 })

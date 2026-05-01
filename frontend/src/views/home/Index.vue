@@ -153,7 +153,7 @@
             @click="router.push(`/product/${product.id}`)"
           >
             <div class="product-image">
-              <img v-if="product.images" :src="parseFirstImage(product.images)" alt="" class="real-image" @error="handleImgError" />
+              <img v-if="product.images" :src="parseFirstImage(product.images)" alt="" class="real-image" loading="lazy" @error="handleImgError" />
               <div v-else class="placeholder-image">
                 <el-icon :size="32"><Goods /></el-icon>
                 <span>商品图片</span>
