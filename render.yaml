@@ -4,7 +4,7 @@ services:
   # 后端服务
   - type: web
     name: resale-platform-backend
-    env: java
+    runtime: java
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -jar target/platform-1.0.0.jar
     envVars:
@@ -22,7 +22,7 @@ services:
   # 前端静态站点
   - type: web
     name: resale-platform-frontend
-    env: static
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     envVars:
