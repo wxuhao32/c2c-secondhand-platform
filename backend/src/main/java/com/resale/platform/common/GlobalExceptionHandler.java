@@ -2,6 +2,9 @@ package com.resale.platform.common;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -93,11 +96,70 @@ public class GlobalExceptionHandler {
         return Result.error(ExceptionEnum.UNAUTHORIZED.getCode(), "认证失败，请重新登录");
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public Result<?> handleDataIntegrityViolation(DataIntegrityViolationException e, HttpServletRequest request) {
+        log.error("数据完整性异常: uri={}, message={}", request.getRequestURI(), e.getMessage());
+        String userMessage = "数据操作冲突，请检查输入是否重复";
+        if (e.getMessage() != null) {
+            String msg = e.getMessage().toLowerCase();
+            if (msg.contains("duplicate") || msg.contains("unique")) {
+                userMessage = "数据已存在，请检查输入是否重复";
+            } else if (msg.contains("foreign key") || msg.contains("constraint")) {
+                userMessage = "数据关联异常，请检查关联数据";
+            }
+        }
+        return Result.error(ExceptionEnum.INTERNAL_ERROR.getCode(), userMessage);
+    }
+
+    @ExceptionHandler(QueryTimeoutException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public Result<?> handleQueryTimeout(QueryTimeoutException e, HttpServletRequest request) {
+        log.error("数据库查询超时: uri={}, message={}", request.getRequestURI(), e.getMessage());
+        return Result.error(ExceptionEnum.INTERNAL_ERROR.getCode(), "数据库查询超时，请稍后再试");
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public Result<?> handleDataAccessException(DataAccessException e, HttpServletRequest request) {
+        log.error("数据库访问异常: uri={}, type={}, message={}", request.getRequestURI(), e.getClass().getSimpleName(), e.getMessage(), e);
+        String userMessage = "数据库操作失败，请稍后再试";
+        Throwable rootCause = e.getRootCause();
+        if (rootCause != null) {
+            String rootMsg = rootCause.getMessage();
+            if (rootMsg != null) {
+                String lowerMsg = rootMsg.toLowerCase();
+                if (lowerMsg.contains("connection") || lowerMsg.contains("communicate") || lowerMsg.contains("connect")) {
+                    userMessage = "数据库连接异常，请稍后再试";
+                } else if (lowerMsg.contains("timeout") || lowerMsg.contains("timed out")) {
+                    userMessage = "数据库操作超时，请稍后再试";
+                } else if (lowerMsg.contains("unknown database") || lowerMsg.contains("doesn't exist")) {
+                    userMessage = "数据库未初始化，请联系管理员";
+                } else if (lowerMsg.contains("access denied") || lowerMsg.contains("authentication")) {
+                    userMessage = "数据库认证失败，请联系管理员";
+                } else if (lowerMsg.contains("table") && (lowerMsg.contains("doesn't exist") || lowerMsg.contains("not found"))) {
+                    userMessage = "数据库表不存在，请联系管理员初始化数据库";
+                }
+            }
+        }
+        return Result.error(ExceptionEnum.INTERNAL_ERROR.getCode(), userMessage);
+    }
+
     @ExceptionHandler(SQLException.class)
     @ResponseStatus(HttpStatus.OK)
     public Result<?> handleSQLException(SQLException e, HttpServletRequest request) {
-        log.error("数据库异常: uri={}, error={}", request.getRequestURI(), e.getMessage(), e);
-        return Result.error(ExceptionEnum.INTERNAL_ERROR.getCode(), "数据库操作失败，请稍后再试");
+        log.error("数据库异常: uri={}, errorCode={}, sqlState={}, message={}", request.getRequestURI(), e.getErrorCode(), e.getSQLState(), e.getMessage(), e);
+        String userMessage = "数据库操作失败，请稍后再试";
+        if (e.getErrorCode() == 1045) {
+            userMessage = "数据库认证失败，请联系管理员";
+        } else if (e.getErrorCode() == 1049) {
+            userMessage = "数据库不存在，请联系管理员";
+        } else if (e.getErrorCode() == 1146) {
+            userMessage = "数据库表不存在，请联系管理员初始化数据库";
+        } else if (e.getErrorCode() == 1205 || e.getErrorCode() == 1213) {
+            userMessage = "数据库锁冲突，请稍后再试";
+        }
+        return Result.error(ExceptionEnum.INTERNAL_ERROR.getCode(), userMessage);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -137,16 +199,25 @@ public class GlobalExceptionHandler {
         if (className.contains("Connection") || className.contains("connection")) {
             return "网络连接异常，请稍后再试";
         }
+        if (className.contains("MyBatis") || className.contains("Mybatis")) {
+            return "数据库操作失败，请稍后再试";
+        }
+        if (className.contains("Persistence") || className.contains("DataAccess")) {
+            return "数据库操作失败，请稍后再试";
+        }
         if (e.getMessage() != null) {
             String msg = e.getMessage().toLowerCase();
             if (msg.contains("timeout")) {
                 return "请求超时，请稍后再试";
             }
-            if (msg.contains("connection")) {
+            if (msg.contains("connection") || msg.contains("communicate") || msg.contains("connect")) {
                 return "网络连接异常，请稍后再试";
             }
-            if (msg.contains("database") || msg.contains("sql")) {
+            if (msg.contains("database") || msg.contains("sql") || msg.contains("mybatis")) {
                 return "数据库操作失败，请稍后再试";
+            }
+            if (msg.contains("table") && msg.contains("exist")) {
+                return "数据库表不存在，请联系管理员";
             }
         }
         return "系统繁忙，请稍后再试";

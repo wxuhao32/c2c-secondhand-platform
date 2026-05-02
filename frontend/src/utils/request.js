@@ -104,11 +104,17 @@ service.interceptors.response.use(
     if (businessGuide) {
       const fullMessage = `${businessGuide.message}，${businessGuide.action}`
       ElMessage.error(fullMessage)
-      return Promise.reject(new Error(businessGuide.message))
+      const error = new Error(businessGuide.message)
+      error.code = res.code
+      error.response = { data: res }
+      return Promise.reject(error)
     }
 
     ElMessage.error(res.message || '操作失败')
-    return Promise.reject(new Error(res.message || '操作失败'))
+    const error = new Error(res.message || '操作失败')
+    error.code = res.code
+    error.response = { data: res }
+    return Promise.reject(error)
   },
   (error) => {
     const config = error.config

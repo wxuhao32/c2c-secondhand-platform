@@ -53,9 +53,21 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("登录请求: account={}, ip={}, rememberMe={}", maskAccount(account), ipAddress, rememberMe);
 
-        captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        try {
+            captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        } catch (BusinessException e) {
+            log.warn("登录失败-验证码校验失败: account={}, code={}, message={}", maskAccount(account), e.getCode(), e.getMessage());
+            throw e;
+        }
 
-        User user = findUserByAccount(account);
+        User user;
+        try {
+            user = findUserByAccount(account);
+        } catch (Exception e) {
+            log.error("登录失败-查询用户异常: account={}, error={}", maskAccount(account), e.getMessage(), e);
+            throw new BusinessException(ExceptionEnum.INTERNAL_ERROR.getCode(), "登录服务异常，请稍后再试");
+        }
+
         if (user == null) {
             log.warn("登录失败: 账号不存在, account={}, ip={}", maskAccount(account), ipAddress);
             throw new BusinessException(ExceptionEnum.ACCOUNT_NOT_FOUND);
@@ -63,14 +75,32 @@ public class AuthServiceImpl implements AuthService {
 
         checkUserStatus(user);
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            handleLoginFailure(user, account, ipAddress);
-            throw new BusinessException(ExceptionEnum.PASSWORD_ERROR);
+        try {
+            if (!passwordEncoder.matches(password, user.getPassword())) {
+                handleLoginFailure(user, account, ipAddress);
+                throw new BusinessException(ExceptionEnum.PASSWORD_ERROR);
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("登录失败-密码校验异常: account={}, error={}", maskAccount(account), e.getMessage(), e);
+            throw new BusinessException(ExceptionEnum.INTERNAL_ERROR.getCode(), "登录服务异常，请稍后再试");
         }
 
-        handleLoginSuccess(user, ipAddress);
+        try {
+            handleLoginSuccess(user, ipAddress);
+        } catch (Exception e) {
+            log.warn("更新登录信息失败，不影响登录: userId={}, error={}", user.getUserId(), e.getMessage());
+        }
 
-        String token = jwtTokenProvider.generateAccessToken(user.getUserId(), rememberMe);
+        String token;
+        try {
+            token = jwtTokenProvider.generateAccessToken(user.getUserId(), rememberMe);
+        } catch (Exception e) {
+            log.error("登录失败-Token生成异常: userId={}, error={}", user.getUserId(), e.getMessage(), e);
+            throw new BusinessException(ExceptionEnum.INTERNAL_ERROR.getCode(), "登录服务异常，请稍后再试");
+        }
+
         Long expiresIn = jwtTokenProvider.getTokenValidityInSeconds(rememberMe);
 
         UserInfoResponse userInfo = buildUserInfoResponse(user);
