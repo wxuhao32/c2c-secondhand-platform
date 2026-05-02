@@ -1,31 +1,30 @@
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:resale_platform}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
-    username: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD:}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    url: ${DB_URL:jdbc:h2:mem:resale_platform;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
     hikari:
-      maximum-pool-size: 25
+      maximum-pool-size: ${DB_POOL_SIZE:25}
       minimum-idle: 10
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
       connection-test-query: SELECT 1
       leak-detection-threshold: 60000
-      pool-name: ResaleMySQLPool
+      pool-name: ResalePool
       auto-commit: true
       read-only: false
 
   h2:
     console:
-      enabled: false
+      enabled: ${H2_CONSOLE_ENABLED:false}
 
   sql:
     init:
       mode: always
-      platform: mysql
-      schema-locations: classpath:schema-mysql.sql
-      data-locations: classpath:data-mysql.sql
+      schema-locations: ${SQL_SCHEMA:classpath:schema.sql}
+      data-locations: ${SQL_DATA:classpath:data-h2.sql}
       continue-on-error: false
       separator: ";"
 
