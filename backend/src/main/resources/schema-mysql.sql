@@ -1,0 +1,173 @@
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    mobile VARCHAR(20) UNIQUE,
+    email VARCHAR(100) UNIQUE,
+    nickname VARCHAR(50),
+    avatar VARCHAR(255),
+    status TINYINT DEFAULT 1,
+    role VARCHAR(20) DEFAULT 'USER',
+    last_login_time DATETIME,
+    last_login_ip VARCHAR(50),
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT,
+    username VARCHAR(50),
+    module VARCHAR(50),
+    action VARCHAR(50),
+    description VARCHAR(500),
+    method VARCHAR(100),
+    path VARCHAR(255),
+    ip VARCHAR(50),
+    status_code INT,
+    duration BIGINT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_auth (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    auth_type VARCHAR(20) NOT NULL,
+    auth_id VARCHAR(100) NOT NULL,
+    auth_data VARCHAR(500),
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_auth (auth_type, auth_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS login_fail_record (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    account VARCHAR(100) NOT NULL UNIQUE,
+    fail_count INT DEFAULT 1,
+    last_fail_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    lock_until DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS goods (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    seller_id BIGINT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    original_price DECIMAL(10, 2),
+    category_id BIGINT,
+    images VARCHAR(2000),
+    status TINYINT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS category (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    parent_id BIGINT DEFAULT 0,
+    icon VARCHAR(255),
+    sort_order INT DEFAULT 0,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS orders (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    order_no VARCHAR(32) NOT NULL UNIQUE,
+    buyer_id BIGINT NOT NULL,
+    seller_id BIGINT NOT NULL,
+    goods_id BIGINT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    status TINYINT DEFAULT 0,
+    address VARCHAR(500),
+    remark VARCHAR(500),
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS favorite (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    goods_id BIGINT NOT NULL,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_goods (user_id, goods_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS message (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    sender_id BIGINT,
+    receiver_id BIGINT NOT NULL,
+    type TINYINT DEFAULT 0,
+    title VARCHAR(200),
+    content TEXT,
+    is_read TINYINT DEFAULT 0,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_conversation (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_key VARCHAR(100) NOT NULL UNIQUE,
+    user1_id BIGINT NOT NULL,
+    user2_id BIGINT NOT NULL,
+    last_message TEXT,
+    last_message_time DATETIME,
+    user1_unread_count INT DEFAULT 0,
+    user2_unread_count INT DEFAULT 0,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_message (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    sender_id BIGINT NOT NULL,
+    receiver_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    message_type TINYINT DEFAULT 0,
+    status TINYINT DEFAULT 0,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS comment (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    goods_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    parent_id BIGINT DEFAULT 0,
+    reply_to_id BIGINT DEFAULT 0,
+    content TEXT NOT NULL,
+    rating INT DEFAULT 5,
+    like_count INT DEFAULT 0,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_address (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    receiver_name VARCHAR(50) NOT NULL,
+    mobile VARCHAR(20) NOT NULL,
+    province VARCHAR(50),
+    city VARCHAR(50),
+    district VARCHAR(50),
+    detail_address VARCHAR(200) NOT NULL,
+    postal_code VARCHAR(10),
+    is_default TINYINT DEFAULT 0,
+    is_deleted TINYINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -22,11 +22,16 @@ spring:
 
   sql:
     init:
-      mode: never
+      mode: always
+      platform: mysql
+      schema-locations: classpath:schema-mysql.sql
+      data-locations: classpath:data-mysql.sql
+      continue-on-error: false
+      separator: ";"
 
   data:
     redis:
-      enabled: true
+      enabled: ${REDIS_ENABLED:false}
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
