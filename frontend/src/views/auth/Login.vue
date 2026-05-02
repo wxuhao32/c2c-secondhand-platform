@@ -76,8 +76,11 @@
                 style="flex: 1"
               />
               <div class="captcha-image" @click="refreshCaptcha">
-                <img v-if="captchaImage" :src="captchaImage" alt="验证码" />
-                <span v-else class="captcha-loading">{{ captchaError ? '点击刷新' : '加载中...' }}</span>
+                <img v-if="captchaImage && !captchaError" :src="captchaImage" alt="验证码" />
+                <div v-else-if="captchaLoading" class="captcha-loading">
+                  <el-icon class="is-loading"><Loading /></el-icon>
+                </div>
+                <span v-else class="captcha-loading captcha-error">{{ captchaError ? '点击刷新' : '加载中...' }}</span>
               </div>
             </div>
           </el-form-item>
@@ -130,7 +133,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock, CircleCheck, Message, Shop } from '@element-plus/icons-vue'
+import { User, Lock, CircleCheck, Message, Shop, Loading } from '@element-plus/icons-vue'
 import { login, getCaptcha } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
@@ -165,15 +168,30 @@ const loginRules = {
   ]
 }
 
+const captchaLoading = ref(false)
+
 const refreshCaptcha = async () => {
+  if (captchaLoading.value) return
+  
+  captchaLoading.value = true
+  captchaError.value = false
+  
   try {
-    captchaError.value = false
     const response = await getCaptcha()
-    captchaImage.value = response.data.image
-    captchaKey.value = response.data.key
+    
+    if (response.data && response.data.image && response.data.key) {
+      captchaImage.value = response.data.image
+      captchaKey.value = response.data.key
+    } else {
+      throw new Error('验证码数据格式错误')
+    }
   } catch (error) {
+    console.error('验证码加载失败:', error)
     captchaError.value = true
     captchaImage.value = ''
+    ElMessage.error('验证码加载失败，请点击刷新重试')
+  } finally {
+    captchaLoading.value = false
   }
 }
 
@@ -434,6 +452,20 @@ onMounted(() => {
       background: $neutral-50;
       color: $color-text-placeholder;
       font-size: $font-size-xs;
+      
+      .el-icon {
+        font-size: 18px;
+        color: $color-primary;
+      }
+      
+      &.captcha-error {
+        cursor: pointer;
+        color: $color-text-secondary;
+        
+        &:hover {
+          color: $color-primary;
+        }
+      }
     }
   }
 

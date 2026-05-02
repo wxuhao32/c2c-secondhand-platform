@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,72 +16,93 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 验证码服务实现类
- * 使用内存存储验证码（演示用途）
- *
- * @author MiniMax Agent
- */
 @Slf4j
 @Service
 public class CaptchaServiceImpl implements CaptchaService {
 
-    // 内存验证码缓存
     private final Map<String, CaptchaEntry> captchaCache = new ConcurrentHashMap<>();
-    
-    // 定时清理过期验证码
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    /**
-     * 验证码有效期（分钟）
-     */
     @Value("${security.login.captcha-validity-minutes:5}")
     private Integer captchaValidityMinutes;
 
-    /**
-     * 验证码缓存Key前缀
-     */
     private static final String CAPTCHA_KEY_PREFIX = "captcha:";
+    private static final String BASE64_PREFIX = "data:image/png;base64,";
+    private static final int CAPTCHA_WIDTH = 120;
+    private static final int CAPTCHA_HEIGHT = 40;
+    private static final int CAPTCHA_LENGTH = 5;
 
-    public CaptchaServiceImpl() {
-        // 每分钟清理一次过期验证码
+    @PostConstruct
+    public void init() {
+        System.setProperty("java.awt.headless", "true");
+        log.info("验证码服务初始化完成，headless模式已启用");
+        
         scheduler.scheduleAtFixedRate(this::cleanExpiredCaptchas, 1, 1, TimeUnit.MINUTES);
+        
+        try {
+            SpecCaptcha warmup = new SpecCaptcha(CAPTCHA_WIDTH, CAPTCHA_HEIGHT, CAPTCHA_LENGTH);
+            warmup.setCharType(SpecCaptcha.TYPE_ONLY_NUMBER);
+            warmup.text();
+            log.info("验证码生成器预热完成");
+        } catch (Exception e) {
+            log.warn("验证码生成器预热失败: {}", e.getMessage());
+        }
     }
 
-    /**
-     * 清理过期验证码
-     */
     private void cleanExpiredCaptchas() {
         long now = System.currentTimeMillis();
-        captchaCache.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
+        int removedCount = 0;
+        for (Map.Entry<String, CaptchaEntry> entry : captchaCache.entrySet()) {
+            if (entry.getValue().isExpired(now)) {
+                captchaCache.remove(entry.getKey());
+                removedCount++;
+            }
+        }
+        if (removedCount > 0) {
+            log.debug("清理过期验证码: {} 个", removedCount);
+        }
     }
 
-    /**
-     * 生成图形验证码
-     *
-     * @return 包含验证码图片Base64和Key的数组
-     */
     @Override
     public Object[] generateCaptcha() {
-        // 生成验证码
-        SpecCaptcha captcha = new SpecCaptcha(120, 40, 5);
-        captcha.setCharType(SpecCaptcha.TYPE_ONLY_NUMBER);
-        String code = captcha.text().toLowerCase();
+        long startTime = System.currentTimeMillis();
+        String key = null;
+        String code = null;
         
-        // 生成唯一Key
-        String key = UUID.randomUUID().toString().replace("-", "");
-        
-        // 存入内存缓存
-        String cacheKey = CAPTCHA_KEY_PREFIX + key;
-        long expireTime = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(captchaValidityMinutes);
-        captchaCache.put(cacheKey, new CaptchaEntry(code, expireTime));
-        
-        // 生成图片Base64
-        String base64Image = captcha.toBase64();
-        
-        log.debug("生成验证码，key={}, code={}", key, code);
-        
-        return new Object[]{base64Image, key};
+        try {
+            key = UUID.randomUUID().toString().replace("-", "");
+            
+            SpecCaptcha captcha = new SpecCaptcha(CAPTCHA_WIDTH, CAPTCHA_HEIGHT, CAPTCHA_LENGTH);
+            captcha.setCharType(SpecCaptcha.TYPE_ONLY_NUMBER);
+            
+            code = captcha.text().toLowerCase();
+            
+            String cacheKey = CAPTCHA_KEY_PREFIX + key;
+            long expireTime = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(captchaValidityMinutes);
+            captchaCache.put(cacheKey, new CaptchaEntry(code, expireTime));
+            
+            String base64Image = captcha.toBase64();
+            
+            if (base64Image == null || base64Image.isEmpty()) {
+                throw new RuntimeException("验证码图片生成失败: Base64为空");
+            }
+            
+            String fullBase64 = base64Image.startsWith("data:") ? base64Image : BASE64_PREFIX + base64Image;
+            
+            long elapsed = System.currentTimeMillis() - startTime;
+            log.info("验证码生成成功: key={}, 耗时={}ms", key, elapsed);
+            
+            if (elapsed > 1000) {
+                log.warn("验证码生成耗时过长: {}ms，建议检查服务器性能", elapsed);
+            }
+            
+            return new Object[]{fullBase64, key};
+            
+        } catch (Exception e) {
+            long elapsed = System.currentTimeMillis() - startTime;
+            log.error("验证码生成失败: key={}, code={}, 耗时={}ms, 错误={}", key, code, elapsed, e.getMessage(), e);
+            throw new BusinessException(ExceptionEnum.INTERNAL_ERROR.getCode(), "验证码生成失败，请刷新重试");
+        }
     }
 
     @Override
@@ -119,11 +141,6 @@ public class CaptchaServiceImpl implements CaptchaService {
         throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
     }
 
-    /**
-     * 删除验证码
-     *
-     * @param key 验证码Key
-     */
     @Override
     public void deleteCaptcha(String key) {
         if (key != null) {
@@ -132,9 +149,6 @@ public class CaptchaServiceImpl implements CaptchaService {
         }
     }
 
-    /**
-     * 验证码条目
-     */
     private static class CaptchaEntry {
         private final String code;
         private final long expireTime;
