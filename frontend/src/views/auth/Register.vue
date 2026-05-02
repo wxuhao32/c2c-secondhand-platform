@@ -115,9 +115,9 @@
           <el-form-item>
             <el-checkbox v-model="registerForm.agreeTerms">
               我已阅读并同意
-              <el-link type="primary" :underline="false">《用户协议》</el-link>
+              <el-link type="primary" underline="never">《用户协议》</el-link>
               和
-              <el-link type="primary" :underline="false">《隐私政策》</el-link>
+              <el-link type="primary" underline="never">《隐私政策》</el-link>
             </el-checkbox>
           </el-form-item>
 
@@ -137,7 +137,7 @@
 
         <div class="register-footer">
           <span>已有账号？</span>
-          <el-link type="primary" :underline="false" @click="goToLogin">立即登录</el-link>
+          <el-link type="primary" underline="never" @click="goToLogin">立即登录</el-link>
         </div>
       </div>
     </div>

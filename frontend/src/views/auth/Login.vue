@@ -88,7 +88,7 @@
           <el-form-item>
             <div class="form-options">
               <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
-              <el-link type="primary" :underline="false">忘记密码？</el-link>
+              <el-link type="primary" underline="never">忘记密码？</el-link>
             </div>
           </el-form-item>
 
@@ -122,7 +122,7 @@
 
         <div class="login-footer">
           <span>还没有账号？</span>
-          <el-link type="primary" :underline="false" @click="goToRegister">立即注册</el-link>
+          <el-link type="primary" underline="never" @click="goToRegister">立即注册</el-link>
         </div>
       </div>
     </div>
@@ -169,6 +169,8 @@ const loginRules = {
 }
 
 const captchaLoading = ref(false)
+let captchaRetryCount = 0
+const MAX_CAPTCHA_RETRY = 3
 
 const refreshCaptcha = async () => {
   if (captchaLoading.value) return
@@ -182,6 +184,7 @@ const refreshCaptcha = async () => {
     if (response.data && response.data.image && response.data.key) {
       captchaImage.value = response.data.image
       captchaKey.value = response.data.key
+      captchaRetryCount = 0
     } else {
       throw new Error('验证码数据格式错误')
     }
@@ -189,9 +192,22 @@ const refreshCaptcha = async () => {
     console.error('验证码加载失败:', error)
     captchaError.value = true
     captchaImage.value = ''
-    ElMessage.error('验证码加载失败，请点击刷新重试')
+    
+    captchaRetryCount++
+    if (captchaRetryCount < MAX_CAPTCHA_RETRY) {
+      ElMessage.warning(`验证码加载失败，正在重试 (${captchaRetryCount}/${MAX_CAPTCHA_RETRY})`)
+      setTimeout(() => {
+        captchaLoading.value = false
+        refreshCaptcha()
+      }, 1000)
+      return
+    } else {
+      ElMessage.error('验证码加载失败，请点击刷新重试')
+    }
   } finally {
-    captchaLoading.value = false
+    if (!captchaError.value || captchaRetryCount >= MAX_CAPTCHA_RETRY) {
+      captchaLoading.value = false
+    }
   }
 }
 

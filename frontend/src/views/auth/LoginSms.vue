@@ -112,11 +112,11 @@
         </el-form>
 
         <div class="login-footer">
-          <el-link type="primary" :underline="false" @click="goToAccountLogin">
+          <el-link type="primary" underline="never" @click="goToAccountLogin">
             <el-icon><ArrowLeft /></el-icon>
             账号密码登录
           </el-link>
-          <el-link type="primary" :underline="false" @click="goToRegister">立即注册</el-link>
+          <el-link type="primary" underline="never" @click="goToRegister">立即注册</el-link>
         </div>
       </div>
     </div>

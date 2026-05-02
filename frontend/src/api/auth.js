@@ -7,7 +7,8 @@ import { getCaptchaKey } from '@/utils/storage'
 export function getCaptcha() {
   return request({
     url: '/auth/captcha',
-    method: 'get'
+    method: 'get',
+    timeout: 10000
   })
 }
 
