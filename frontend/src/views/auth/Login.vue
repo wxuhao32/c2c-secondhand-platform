@@ -201,8 +201,14 @@ const handleLogin = async () => {
       const redirect = route.query.redirect || '/home'
       router.replace(redirect)
     } catch (error) {
-      ElMessage.error(error.message || '登录失败')
-      refreshCaptcha()
+      const errorCode = error.response?.data?.code || error.code
+      if ([2005, 2006, 2007].includes(errorCode)) {
+        refreshCaptcha()
+        loginForm.captchaCode = ''
+      }
+      if (errorCode === 2002) {
+        loginForm.password = ''
+      }
     } finally {
       loading.value = false
     }

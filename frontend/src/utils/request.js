@@ -6,13 +6,13 @@ import router from '@/router'
 let serverErrorShown = false
 let serverErrorTimer = null
 
-const showServerErrorOnce = (msg) => {
+const showServerErrorOnce = (msg, duration = 3000) => {
   if (serverErrorShown) return
   serverErrorShown = true
   ElMessage({
     message: msg,
     type: 'error',
-    duration: 3000,
+    duration: duration,
     onClose: () => {
       serverErrorShown = false
     }
@@ -21,6 +21,29 @@ const showServerErrorOnce = (msg) => {
   serverErrorTimer = setTimeout(() => {
     serverErrorShown = false
   }, 5000)
+}
+
+const ERROR_MESSAGES = {
+  400: '请求参数错误',
+  401: '登录已过期，请重新登录',
+  403: '无权访问',
+  404: '请求的资源不存在',
+  429: '请求过于频繁，请稍后再试',
+  500: '服务器内部错误',
+  502: '服务暂时不可用',
+  503: '服务暂时不可用',
+  504: '请求超时，请稍后再试'
+}
+
+const BUSINESS_ERROR_GUIDES = {
+  2001: { message: '账号不存在', action: '请检查账号是否正确，或注册新账号' },
+  2002: { message: '密码错误', action: '请检查密码是否正确，或尝试找回密码' },
+  2003: { message: '账户已被锁定', action: '请联系客服解锁' },
+  2004: { message: '账户已被禁用', action: '请联系客服处理' },
+  2005: { message: '验证码错误', action: '请重新输入验证码' },
+  2006: { message: '验证码已过期', action: '请点击验证码图片刷新' },
+  2007: { message: '请先获取验证码', action: '请点击验证码图片获取' },
+  2015: { message: '登录失败次数过多', action: '请15分钟后再试' }
 }
 
 const service = axios.create({
@@ -77,6 +100,13 @@ service.interceptors.response.use(
       return Promise.reject(new Error(res.message || '资源不存在'))
     }
 
+    const businessGuide = BUSINESS_ERROR_GUIDES[res.code]
+    if (businessGuide) {
+      const fullMessage = `${businessGuide.message}，${businessGuide.action}`
+      ElMessage.error(fullMessage)
+      return Promise.reject(new Error(businessGuide.message))
+    }
+
     ElMessage.error(res.message || '操作失败')
     return Promise.reject(new Error(res.message || '操作失败'))
   },
@@ -85,6 +115,7 @@ service.interceptors.response.use(
 
     if (error.response) {
       const status = error.response.status
+      const data = error.response.data
 
       if ([502, 503, 504].includes(status) && config && (!config._retryCount || config._retryCount < 2)) {
         config._retryCount = (config._retryCount || 0) + 1
@@ -93,9 +124,17 @@ service.interceptors.response.use(
         })
       }
 
+      if (data && data.code && BUSINESS_ERROR_GUIDES[data.code]) {
+        const guide = BUSINESS_ERROR_GUIDES[data.code]
+        showServerErrorOnce(`${guide.message}，${guide.action}`)
+        return Promise.reject(error)
+      }
+
+      const errorMessage = data?.message || ERROR_MESSAGES[status] || '请求失败'
+      
       switch (status) {
         case 400:
-          ElMessage.error('请求参数错误')
+          ElMessage.error(errorMessage)
           break
         case 401:
           ElMessage.error('登录已过期，请重新登录')
@@ -108,15 +147,20 @@ service.interceptors.response.use(
         case 404:
           ElMessage.error('请求的资源不存在')
           break
+        case 429:
+          showServerErrorOnce('请求过于频繁，请稍后再试', 5000)
+          break
         case 500:
         case 502:
         case 503:
         case 504:
-          showServerErrorOnce('服务暂时不可用，请稍后再试')
+          showServerErrorOnce(errorMessage + '，请稍后再试')
           break
         default:
-          ElMessage.error(error.response.data?.message || '请求失败')
+          ElMessage.error(errorMessage)
       }
+    } else if (error.code === 'ECONNABORTED') {
+      showServerErrorOnce('请求超时，请检查网络后重试')
     } else if (error.request) {
       showServerErrorOnce('网络连接失败，请检查网络')
     } else {

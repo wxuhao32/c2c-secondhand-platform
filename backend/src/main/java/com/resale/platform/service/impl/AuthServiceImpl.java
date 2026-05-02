@@ -51,20 +51,20 @@ public class AuthServiceImpl implements AuthService {
         String password = request.getPassword();
         boolean rememberMe = Boolean.TRUE.equals(request.getRememberMe());
 
-        boolean captchaValid = captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
-        if (!captchaValid) {
-            throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
-        }
+        log.info("登录请求: account={}, ip={}, rememberMe={}", maskAccount(account), ipAddress, rememberMe);
+
+        captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
 
         User user = findUserByAccount(account);
         if (user == null) {
+            log.warn("登录失败: 账号不存在, account={}, ip={}", maskAccount(account), ipAddress);
             throw new BusinessException(ExceptionEnum.ACCOUNT_NOT_FOUND);
         }
 
         checkUserStatus(user);
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            handleLoginFailure(user, account);
+            handleLoginFailure(user, account, ipAddress);
             throw new BusinessException(ExceptionEnum.PASSWORD_ERROR);
         }
 
@@ -74,6 +74,8 @@ public class AuthServiceImpl implements AuthService {
         Long expiresIn = jwtTokenProvider.getTokenValidityInSeconds(rememberMe);
 
         UserInfoResponse userInfo = buildUserInfoResponse(user);
+
+        log.info("登录成功: userId={}, username={}, ip={}", user.getUserId(), user.getUsername(), ipAddress);
 
         return LoginResponse.builder()
                 .token(token)
@@ -196,8 +198,8 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private void handleLoginFailure(User user, String account) {
-        log.warn("用户登录失败: userId={}, account={}", user.getUserId(), account);
+    private void handleLoginFailure(User user, String account, String ipAddress) {
+        log.warn("登录失败: 密码错误, userId={}, account={}, ip={}", user.getUserId(), maskAccount(account), ipAddress);
     }
 
     private void handleLoginSuccess(User user, String ipAddress) {
@@ -221,5 +223,18 @@ public class AuthServiceImpl implements AuthService {
                 .lastLoginIp(user.getLastLoginIp())
                 .createTime(user.getCreatedAt())
                 .build();
+    }
+
+    private String maskAccount(String account) {
+        if (account == null || account.length() < 3) {
+            return "***";
+        }
+        if (account.contains("@")) {
+            int atIndex = account.indexOf("@");
+            if (atIndex > 2) {
+                return account.substring(0, 2) + "***" + account.substring(atIndex);
+            }
+        }
+        return account.substring(0, 2) + "***" + account.substring(account.length() - 1);
     }
 }

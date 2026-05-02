@@ -83,34 +83,40 @@ public class CaptchaServiceImpl implements CaptchaService {
         return new Object[]{base64Image, key};
     }
 
-    /**
-     * 验证图形验证码
-     *
-     * @param key 验证码Key
-     * @param code 用户输入的验证码
-     * @return 是否验证通过
-     */
     @Override
     public boolean verifyCaptcha(String key, String code) {
-        if (key == null || code == null) {
+        if (key == null || key.trim().isEmpty()) {
+            log.warn("验证码校验失败: key为空");
+            throw new BusinessException(ExceptionEnum.CAPTCHA_REQUIRED);
+        }
+        
+        if (code == null || code.trim().isEmpty()) {
+            log.warn("验证码校验失败: code为空, key={}", key);
             throw new BusinessException(ExceptionEnum.CAPTCHA_REQUIRED);
         }
         
         String cacheKey = CAPTCHA_KEY_PREFIX + key;
         CaptchaEntry entry = captchaCache.get(cacheKey);
         
-        if (entry == null || entry.isExpired(System.currentTimeMillis())) {
-            captchaCache.remove(cacheKey);
+        if (entry == null) {
+            log.warn("验证码校验失败: 验证码不存在, key={}", key);
             throw new BusinessException(ExceptionEnum.CAPTCHA_EXPIRED);
         }
         
-        // 验证成功后删除验证码
-        if (entry.getCode().equalsIgnoreCase(code)) {
+        if (entry.isExpired(System.currentTimeMillis())) {
             captchaCache.remove(cacheKey);
+            log.warn("验证码校验失败: 验证码已过期, key={}", key);
+            throw new BusinessException(ExceptionEnum.CAPTCHA_EXPIRED);
+        }
+        
+        if (entry.getCode().equalsIgnoreCase(code.trim())) {
+            captchaCache.remove(cacheKey);
+            log.debug("验证码校验成功: key={}", key);
             return true;
         }
         
-        return false;
+        log.warn("验证码校验失败: 验证码错误, key={}, input={}, expected={}", key, code, entry.getCode());
+        throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
     }
 
     /**
