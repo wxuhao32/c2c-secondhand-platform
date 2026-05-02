@@ -15,17 +15,17 @@ spring:
       pool-name: ResaleMySQLPool
       auto-commit: true
       read-only: false
-      pool-name: ResaleMySQLPool
-      auto-commit: true
-      read-only: false
 
   h2:
     console:
       enabled: false
-      mode: never
+
+  sql:
+    init:
       mode: never
 
   data:
+    redis:
       enabled: true
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
@@ -38,26 +38,74 @@ spring:
           min-idle: 5
           max-wait: -1ms
         shutdown-timeout: 200ms
-      enabled: true
-      host: ${REDIS_HOST:localhost}
-  port: ${PORT:${SERVER_PORT:10000}}
-      password: ${REDIS_PASSWORD:}
-      database: ${REDIS_DATABASE:0}
-      lettuce:
-        pool:
-      max: 300
-      min-spare: 20
-    max-connections: 10000
-    accept-count: 200
-        shutdown-timeout: 200ms
 
 server:
   port: ${PORT:${SERVER_PORT:10000}}
   servlet:
     context-path: /api
-  tomcat:
+  compression:
+    enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
-    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+    min-response-size: 1024
+  tomcat:
+    threads:
+      max: 300
+      min-spare: 20
+    max-connections: 10000
+    accept-count: 200
+    connection-timeout: 20000
 
 mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.resale.platform.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
   configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+    default-statement-timeout: 30
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+jwt:
+  secret: ${JWT_SECRET:ResalePlatformSecretKey2024ForJWTSigningMustBeLongEnough12345678901234567890}
+  access-token-validity-in-seconds: ${JWT_ACCESS_TOKEN_VALIDITY:7200}
+  refresh-token-validity-in-seconds: ${JWT_REFRESH_TOKEN_VALIDITY:604800}
+
+security:
+  login:
+    max-fail-count: 5
+    lock-duration-minutes: 15
+    captcha-validity-minutes: 5
+    sms-validity-minutes: 5
+    sms-max-send-count: 10
+    rate-limit-per-minute: 5
+
+rate-limit:
+  enabled: true
+  default-capacity: 100
+  default-refill-tokens: 100
+  default-refill-duration: 60
+  api-limits:
+    auth:
+      capacity: 10
+      refill-tokens: 10
+      refill-duration: 60
+    product:
+      capacity: 60
+      refill-tokens: 60
+      refill-duration: 60
+    order:
+      capacity: 20
+      refill-tokens: 20
+      refill-duration: 60
+
+logging:
+  level:
+    root: INFO
+    com.resale.platform: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
