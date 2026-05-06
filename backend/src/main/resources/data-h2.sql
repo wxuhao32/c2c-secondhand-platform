@@ -90,3 +90,11 @@ INSERT INTO message (id, sender_id, receiver_id, type, title, content, is_read)
 SELECT 3, NULL, 3, 0, '订单提醒', '您的订单202404280001已完成', 1 WHERE NOT EXISTS (SELECT 1 FROM message WHERE id = 3);
 INSERT INTO message (id, sender_id, receiver_id, type, title, content, is_read)
 SELECT 4, 2, 3, 1, NULL, '在的，可以小刀', 1 WHERE NOT EXISTS (SELECT 1 FROM message WHERE id = 4);
+
+-- 重置自增序列，确保新用户注册时 ID 从正确值开始
+ALTER TABLE users ALTER COLUMN id RESTART WITH 4;
+ALTER TABLE category ALTER COLUMN id RESTART WITH 20;
+ALTER TABLE goods ALTER COLUMN id RESTART WITH 9;
+ALTER TABLE orders ALTER COLUMN id RESTART WITH 4;
+ALTER TABLE favorite ALTER COLUMN id RESTART WITH 5;
+ALTER TABLE message ALTER COLUMN id RESTART WITH 5;
