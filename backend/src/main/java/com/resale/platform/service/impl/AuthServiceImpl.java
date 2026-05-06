@@ -109,6 +109,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
         }
 
+        String email = request.getEmail();
+        if (email != null && email.trim().isEmpty()) {
+            email = null;
+        }
+
         User existUser = userMapper.selectByUsername(request.getUsername());
         if (existUser != null) {
             throw new BusinessException(ExceptionEnum.USERNAME_EXIST);
@@ -119,19 +124,19 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ExceptionEnum.MOBILE_EXIST);
         }
 
-        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
-            existUser = userMapper.selectByEmail(request.getEmail());
+        if (email != null) {
+            existUser = userMapper.selectByEmail(email);
             if (existUser != null) {
                 throw new BusinessException(ExceptionEnum.EMAIL_EXIST);
             }
         }
 
-        cleanupDeletedUsers(request.getUsername(), request.getMobile(), request.getEmail());
+        cleanupDeletedUsers(request.getUsername(), request.getMobile(), email);
 
         User user = new User();
         user.setUsername(request.getUsername());
         user.setMobile(request.getMobile());
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setStatus(1);
         user.setCreatedAt(LocalDateTime.now());
