@@ -4,7 +4,6 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -46,18 +45,6 @@ public class JwtTokenProvider {
     private SecretKey getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
-    }
-
-    /**
-     * 生成访问令牌
-     *
-     * @param authentication 认证信息
-     * @param rememberMe 是否记住我
-     * @return JWT令牌
-     */
-    public String generateAccessToken(Authentication authentication, boolean rememberMe) {
-        SecurityUser userDetails = (SecurityUser) authentication.getPrincipal();
-        return generateToken(userDetails.getUserId().toString(), rememberMe);
     }
 
     /**

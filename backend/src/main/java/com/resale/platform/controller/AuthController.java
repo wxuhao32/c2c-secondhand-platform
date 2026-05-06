@@ -14,6 +14,7 @@ import com.resale.platform.security.SecurityUser;
 import com.resale.platform.service.AuthService;
 import com.resale.platform.service.CaptchaService;
 import com.resale.platform.service.SmsService;
+import com.resale.platform.util.MaskUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,7 +54,7 @@ public class AuthController {
     @Operation(summary = "账号密码登录", description = "使用用户名/手机号+密码登录")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String ipAddress = getClientIp(httpRequest);
-        log.info("登录请求: account={}, ip={}", maskAccount(request.getAccount()), ipAddress);
+        log.info("登录请求: account={}, ip={}", MaskUtils.maskAccount(request.getAccount()), ipAddress);
         
         LoginResponse response = authService.login(request, ipAddress);
         log.info("登录成功: userId={}", response.getUserInfo().getUserId());
@@ -82,7 +83,7 @@ public class AuthController {
     @PostMapping("/loginBySms")
     @Operation(summary = "短信验证码登录", description = "使用手机号+短信验证码登录，新用户自动注册")
     public Result<LoginResponse> loginBySms(@Valid @RequestBody SmsLoginRequest request) {
-        log.info("短信登录请求: mobile={}", maskMobile(request.getMobile()));
+        log.info("短信登录请求: mobile={}", MaskUtils.maskMobile(request.getMobile()));
         
         LoginResponse response = smsService.loginBySms(request);
         
@@ -112,7 +113,7 @@ public class AuthController {
     @PostMapping("/register")
     @Operation(summary = "用户注册", description = "用户名+密码注册新账号")
     public Result<Map<String, Long>> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("注册请求: username={}, mobile={}", request.getUsername(), maskMobile(request.getMobile()));
+        log.info("注册请求: username={}, mobile={}", request.getUsername(), MaskUtils.maskMobile(request.getMobile()));
         
         Long userId = authService.register(request);
         
@@ -148,11 +149,11 @@ public class AuthController {
         return Result.success(smsService.getRecentSmsCodes());
     }
 
-    /**
-     * 获取当前登录用户详情
-     */
     private SecurityUser getCurrentUserDetails() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof SecurityUser)) {
+            throw new BusinessException(ExceptionEnum.UNAUTHORIZED);
+        }
         return (SecurityUser) authentication.getPrincipal();
     }
 
@@ -176,38 +177,9 @@ public class AuthController {
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
-        // 多级代理时取第一个IP
         if (ip != null && ip.contains(",")) {
             ip = ip.split(",")[0].trim();
         }
         return ip;
-    }
-
-    /**
-     * 掩码账号（脱敏处理）
-     */
-    private String maskAccount(String account) {
-        if (account == null || account.length() < 3) {
-            return "***";
-        }
-        if (account.contains("@")) {
-            // 邮箱：保留前缀前两位和域名
-            int atIndex = account.indexOf("@");
-            if (atIndex > 2) {
-                return account.substring(0, 2) + "***" + account.substring(atIndex);
-            }
-        }
-        // 手机号或用户名：保留首尾
-        return account.substring(0, 2) + "***" + account.substring(account.length() - 1);
-    }
-
-    /**
-     * 掩码手机号（脱敏处理）
-     */
-    private String maskMobile(String mobile) {
-        if (mobile == null || mobile.length() < 7) {
-            return "***";
-        }
-        return mobile.substring(0, 3) + "****" + mobile.substring(mobile.length() - 4);
     }
 }

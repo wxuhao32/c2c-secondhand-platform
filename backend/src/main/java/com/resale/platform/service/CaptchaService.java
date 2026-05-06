@@ -1,7 +1,5 @@
 package com.resale.platform.service;
 
-import java.awt.image.BufferedImage;
-
 /**
  * 验证码服务接口
  *
@@ -12,7 +10,7 @@ public interface CaptchaService {
     /**
      * 生成图形验证码
      *
-     * @return 包含验证码图片和Key的数组 [BufferedImage, key]
+     * @return 包含Base64图片和Key的数组 [String(Base64), String(key)]
      */
     Object[] generateCaptcha();
 

@@ -1,6 +1,5 @@
 package com.resale.platform.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.resale.platform.common.BusinessException;
 import com.resale.platform.common.ExceptionEnum;
 import com.resale.platform.dto.request.LoginRequest;
@@ -10,17 +9,11 @@ import com.resale.platform.dto.response.UserInfoResponse;
 import com.resale.platform.entity.User;
 import com.resale.platform.mapper.UserMapper;
 import com.resale.platform.security.JwtTokenProvider;
-import com.resale.platform.security.SecurityUser;
 import com.resale.platform.service.AuthService;
 import com.resale.platform.service.CaptchaService;
+import com.resale.platform.util.MaskUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,14 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final CaptchaService captchaService;
-    private final AuthenticationManager authenticationManager;
     private final TokenBlacklistService tokenBlacklistService;
-
-    @Value("${security.login.max-fail-count:5}")
-    private Integer maxFailCount;
-
-    @Value("${security.login.lock-duration-minutes:15}")
-    private Integer lockDurationMinutes;
 
     @Override
     public LoginResponse login(LoginRequest request, String ipAddress) {
@@ -51,25 +37,23 @@ public class AuthServiceImpl implements AuthService {
         String password = request.getPassword();
         boolean rememberMe = Boolean.TRUE.equals(request.getRememberMe());
 
-        log.info("登录请求: account={}, ip={}, rememberMe={}", maskAccount(account), ipAddress, rememberMe);
+        log.info("登录请求: account={}, ip={}, rememberMe={}", MaskUtils.maskAccount(account), ipAddress, rememberMe);
 
-        try {
-            captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
-        } catch (BusinessException e) {
-            log.warn("登录失败-验证码校验失败: account={}, code={}, message={}", maskAccount(account), e.getCode(), e.getMessage());
-            throw e;
+        if (!captchaService.verifyCaptcha(request.getCaptchaKey(), request.getCaptchaCode())) {
+            log.warn("登录失败-验证码校验失败: account={}", MaskUtils.maskAccount(account));
+            throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
         }
 
         User user;
         try {
             user = findUserByAccount(account);
         } catch (Exception e) {
-            log.error("登录失败-查询用户异常: account={}, error={}", maskAccount(account), e.getMessage(), e);
+            log.error("登录失败-查询用户异常: account={}, error={}", MaskUtils.maskAccount(account), e.getMessage(), e);
             throw new BusinessException(ExceptionEnum.INTERNAL_ERROR.getCode(), "登录服务异常，请稍后再试");
         }
 
         if (user == null) {
-            log.warn("登录失败: 账号不存在, account={}, ip={}", maskAccount(account), ipAddress);
+            log.warn("登录失败: 账号不存在, account={}, ip={}", MaskUtils.maskAccount(account), ipAddress);
             throw new BusinessException(ExceptionEnum.ACCOUNT_NOT_FOUND);
         }
 
@@ -83,7 +67,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("登录失败-密码校验异常: account={}, error={}", maskAccount(account), e.getMessage(), e);
+            log.error("登录失败-密码校验异常: account={}, error={}", MaskUtils.maskAccount(account), e.getMessage(), e);
             throw new BusinessException(ExceptionEnum.INTERNAL_ERROR.getCode(), "登录服务异常，请稍后再试");
         }
 
@@ -229,13 +213,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void handleLoginFailure(User user, String account, String ipAddress) {
-        log.warn("登录失败: 密码错误, userId={}, account={}, ip={}", user.getUserId(), maskAccount(account), ipAddress);
+        log.warn("登录失败: 密码错误, userId={}, account={}, ip={}", user.getUserId(), MaskUtils.maskAccount(account), ipAddress);
     }
 
     private void handleLoginSuccess(User user, String ipAddress) {
-        user.setLastLoginIp(ipAddress);
-        user.setLastLoginTime(LocalDateTime.now());
-        userMapper.updateById(user);
+        userMapper.updateLoginInfo(user.getUserId(), LocalDateTime.now(), ipAddress);
         log.info("用户登录成功: userId={}, ip={}", user.getUserId(), ipAddress);
     }
 
@@ -253,18 +235,5 @@ public class AuthServiceImpl implements AuthService {
                 .lastLoginIp(user.getLastLoginIp())
                 .createTime(user.getCreatedAt())
                 .build();
-    }
-
-    private String maskAccount(String account) {
-        if (account == null || account.length() < 3) {
-            return "***";
-        }
-        if (account.contains("@")) {
-            int atIndex = account.indexOf("@");
-            if (atIndex > 2) {
-                return account.substring(0, 2) + "***" + account.substring(atIndex);
-            }
-        }
-        return account.substring(0, 2) + "***" + account.substring(account.length() - 1);
     }
 }

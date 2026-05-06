@@ -109,12 +109,12 @@ public class CaptchaServiceImpl implements CaptchaService {
     public boolean verifyCaptcha(String key, String code) {
         if (key == null || key.trim().isEmpty()) {
             log.warn("验证码校验失败: key为空");
-            throw new BusinessException(ExceptionEnum.CAPTCHA_REQUIRED);
+            return false;
         }
         
         if (code == null || code.trim().isEmpty()) {
             log.warn("验证码校验失败: code为空, key={}", key);
-            throw new BusinessException(ExceptionEnum.CAPTCHA_REQUIRED);
+            return false;
         }
         
         String cacheKey = CAPTCHA_KEY_PREFIX + key;
@@ -122,13 +122,13 @@ public class CaptchaServiceImpl implements CaptchaService {
         
         if (entry == null) {
             log.warn("验证码校验失败: 验证码不存在, key={}", key);
-            throw new BusinessException(ExceptionEnum.CAPTCHA_EXPIRED);
+            return false;
         }
         
         if (entry.isExpired(System.currentTimeMillis())) {
             captchaCache.remove(cacheKey);
             log.warn("验证码校验失败: 验证码已过期, key={}", key);
-            throw new BusinessException(ExceptionEnum.CAPTCHA_EXPIRED);
+            return false;
         }
         
         if (entry.getCode().equalsIgnoreCase(code.trim())) {
@@ -138,7 +138,7 @@ public class CaptchaServiceImpl implements CaptchaService {
         }
         
         log.warn("验证码校验失败: 验证码错误, key={}, input={}, expected={}", key, code, entry.getCode());
-        throw new BusinessException(ExceptionEnum.CAPTCHA_ERROR);
+        return false;
     }
 
     @Override

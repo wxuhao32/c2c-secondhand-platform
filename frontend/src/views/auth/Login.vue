@@ -236,8 +236,7 @@ const handleLogin = async () => {
       router.replace(redirect)
     } catch (error) {
       const errorCode = error?.response?.data?.code || error?.code
-      const errorMsg = error?.response?.data?.message || error?.message || '登录失败'
-      
+
       if ([2005, 2006, 2007].includes(errorCode)) {
         refreshCaptcha()
         loginForm.captchaCode = ''
@@ -245,10 +244,10 @@ const handleLogin = async () => {
         loginForm.password = ''
       } else if (errorCode === 2002) {
         loginForm.password = ''
-      } else if (errorCode === 2004) {
-        ElMessage.error('账户已被禁用，请联系客服')
       } else if (errorCode === 500) {
-        ElMessage.error(errorMsg || '服务器异常，请稍后再试')
+        refreshCaptcha()
+        loginForm.captchaCode = ''
+      } else if (!errorCode) {
         refreshCaptcha()
         loginForm.captchaCode = ''
       }

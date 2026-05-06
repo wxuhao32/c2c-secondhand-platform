@@ -17,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.resale.platform.service.impl.TokenBlacklistService;
 
 import java.io.IOException;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -30,31 +31,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
+    private static final Set<String> PUBLIC_PATH_PREFIXES = Set.of(
+            "/auth/captcha",
+            "/auth/login",
+            "/auth/register",
+            "/auth/sendSms",
+            "/auth/loginBySms",
+            "/auth/sms-codes",
+            "/auth/forgotPassword",
+            "/auth/wechat/",
+            "/products/categories",
+            "/products/category/",
+            "/search/"
+    );
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String path = request.getRequestURI();
-        log.debug("JwtAuthenticationFilter - 处理路径: {}", path);
+        String fullPath = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        String path = (contextPath != null && !contextPath.isEmpty() && fullPath.startsWith(contextPath))
+                ? fullPath.substring(contextPath.length())
+                : fullPath;
+        String method = request.getMethod();
 
-        boolean isPublicPath = path.contains("/auth/captcha") ||
-               path.contains("/auth/login") ||
-               path.contains("/auth/register") ||
-               path.contains("/auth/sendSms") ||
-               path.contains("/auth/loginBySms") ||
-               path.contains("/auth/sms-codes") ||
-               path.contains("/auth/forgotPassword") ||
-               path.contains("/auth/wechat/") ||
-               path.equals("/api/products") && "GET".equals(request.getMethod()) ||
-               path.contains("/products/categories") ||
-               path.contains("/products/category/") ||
-               path.matches(".*/products/\\d+$") ||
-               path.contains("/search/");
-
-        if (isPublicPath) {
-            log.debug("JwtAuthenticationFilter - 公开接口，设置匿名认证并放行: {}", path);
-            UsernamePasswordAuthenticationToken anonymousAuth =
-                    new UsernamePasswordAuthenticationToken("anonymous", null, java.util.Collections.emptyList());
-            SecurityContextHolder.getContext().setAuthentication(anonymousAuth);
+        if (isPublicPath(path, method)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -64,9 +65,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 String tokenId = tokenProvider.getTokenId(jwt);
-                boolean isBlacklisted = tokenBlacklistService.isBlacklisted(tokenId);
 
-                if (!isBlacklisted) {
+                if (!tokenBlacklistService.isBlacklisted(tokenId)) {
                     Long userId = tokenProvider.getUserIdFromToken(jwt);
                     UserDetails userDetails = userDetailsService.loadUserById(userId);
 
@@ -78,14 +78,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception ex) {
-            log.error("无法设置用户认证", ex);
+            log.error("无法设置用户认证: path={}, error={}", path, ex.getMessage());
         }
 
         filterChain.doFilter(request, response);
     }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    private boolean isPublicPath(String path, String method) {
+        for (String prefix : PUBLIC_PATH_PREFIXES) {
+            if (path.startsWith(prefix)) {
+                return true;
+            }
+        }
+
+        if ("GET".equals(method) && path.equals("/products")) {
+            return true;
+        }
+
+        if ("GET".equals(method) && path.matches(".*/products/\\d+$")) {
+            return true;
+        }
+
+        if ("GET".equals(method) && path.matches(".*/comments/.*")) {
+            return true;
+        }
+
         return false;
     }
 
