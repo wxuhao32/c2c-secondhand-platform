@@ -1,23 +1,17 @@
-# Render 部署配置文件
-
 services:
-  # 后端服务
   - type: web
     name: resale-platform-backend
     runtime: java
     buildCommand: ./mvnw clean package -DskipTests
-    startCommand: java -jar target/platform-1.0.0.jar
+    startCommand: java -Xmx512m -jar target/platform-1.0.0.jar
     envVars:
       - key: JAVA_VERSION
         value: 17
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 1
+      - key: PORT
+        generateValue: true
 
-  # 前端静态站点
   - type: web
     name: resale-platform-frontend
     runtime: static
