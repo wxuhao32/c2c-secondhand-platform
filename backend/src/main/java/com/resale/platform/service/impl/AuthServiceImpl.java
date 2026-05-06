@@ -14,6 +14,7 @@ import com.resale.platform.service.CaptchaService;
 import com.resale.platform.util.MaskUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final CaptchaService captchaService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public LoginResponse login(LoginRequest request, String ipAddress) {
@@ -124,6 +126,8 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        cleanupDeletedUsers(request.getUsername(), request.getMobile(), request.getEmail());
+
         User user = new User();
         user.setUsername(request.getUsername());
         user.setMobile(request.getMobile());
@@ -137,6 +141,20 @@ public class AuthServiceImpl implements AuthService {
         log.info("用户注册成功: userId={}, username={}", user.getUserId(), user.getUsername());
 
         return user.getUserId();
+    }
+
+    private void cleanupDeletedUsers(String username, String mobile, String email) {
+        try {
+            jdbcTemplate.update("DELETE FROM users WHERE username = ? AND is_deleted = 1", username);
+            if (mobile != null) {
+                jdbcTemplate.update("DELETE FROM users WHERE mobile = ? AND is_deleted = 1", mobile);
+            }
+            if (email != null && !email.isEmpty()) {
+                jdbcTemplate.update("DELETE FROM users WHERE email = ? AND is_deleted = 1", email);
+            }
+        } catch (Exception e) {
+            log.warn("清理已删除用户失败：{}", e.getMessage());
+        }
     }
 
     @Override
